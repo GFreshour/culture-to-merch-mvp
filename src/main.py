@@ -14,6 +14,10 @@ from openai import OpenAI
 
 client = OpenAI()
 
+def html_to_pdf(html_path, pdf_path):
+    HTML(filename=html_path).write_pdf(pdf_path)
+
+
 def extract_section(text, label):
     if label not in text:
         return ""
@@ -296,10 +300,64 @@ Example:
     html_lines = [
         "<html><head><meta charset='UTF-8'><title>Daily Merch Ideas</title>",
         "<style>",
-        "body{font-family:Arial;padding:20px}",
-        ".trend{border-bottom:1px solid #ddd;margin-bottom:30px;padding-bottom:20px}",
-        ".prompt{background:#f6f6f6;padding:15px;white-space:pre-wrap;border-radius:6px}",
+        "body {",
+        "  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial;",
+        "  background: #fafafa;",
+        "  color: #222;",
+        "  padding: 40px;",
+        "}",
+
+        "h1 {",
+        "  font-size: 32px;",
+        "  margin-bottom: 10px;",
+        "}",
+
+        "h2 {",
+        "  font-size: 24px;",
+        "  margin-bottom: 5px;",
+        "}",
+
+        "h3 {",
+        "  margin-top: 24px;",
+        "  margin-bottom: 6px;",
+        "}",
+
+        "p {",
+        "  line-height: 1.5;",
+        "}",
+
+        ".trend {",
+        "  background: #ffffff;",
+        "  border-radius: 10px;",
+        "  padding: 24px;",
+        "  margin-bottom: 30px;",
+        "  box-shadow: 0 4px 12px rgba(0,0,0,0.06);",
+        "}",
+
+        ".badge {",
+        "  display: inline-block;",
+        "  background: #eee;",
+        "  padding: 4px 10px;",
+        "  border-radius: 999px;",
+        "  font-size: 12px;",
+        "  margin-right: 8px;",
+        "}",
+
+        ".keywords {",
+        "  background: #f6f6f6;",
+        "  padding: 12px;",
+        "  border-radius: 6px;",
+        "  font-size: 14px;",
+        "}",
+
+        ".design-block {",
+        "  background: #f9f9f9;",
+        "  border-left: 4px solid #ddd;",
+        "  padding: 12px;",
+        "  margin-bottom: 12px;",
+        "}",
         "</style></head><body>",
+
         f"<h1>☕ Daily Merch Ideas — {today}</h1>",
         f"<p>Top {len(selected)} High & Medium viability ideas</p>"
     ]
@@ -317,11 +375,14 @@ Example:
             design_html = ""
             for d in ai.get("design", []):
                 if isinstance(d, dict):
+                    design_html += "<div class='design-block'>"
                     design_html += f"<strong>{html.escape(d.get('style',''))}</strong><br>"
                     design_html += f"Layout: {html.escape(d.get('layout',''))}<br>"
                     design_html += f"Font vibe: {html.escape(d.get('font_vibe',''))}<br>"
                     design_html += f"Colors: {html.escape(d.get('colors',''))}<br>"
-                    design_html += f"Graphic: {html.escape(d.get('graphic',''))}<br><br>"
+                    design_html += f"Graphic: {html.escape(d.get('graphic',''))}"
+                    design_html += "</div>"
+
                 else:
                     design_html += f"{html.escape(str(d))}<br>"
 
@@ -339,7 +400,7 @@ Example:
                 f"<p>{design_html}</p>",
 
                 "<h3>🏷️ Etsy Keywords</h3>",
-                f"<p>{html.escape(keywords)}</p>",
+                f"<div class='keywords'>{html.escape(keywords)}</div>",
 
                 "<h3>⚠️ Risks / Notes</h3>",
                 f"<p>{html.escape(ai.get('risks',''))}</p>"
@@ -354,8 +415,23 @@ Example:
     # Save HTML
     with open(html_path, "w", encoding="utf-8") as f:
         f.write("\n".join(html_lines))
-
+    
     print(f"✅ HTML report created: {html_path}")
+
+    #Creating the PDF
+    pdf_path = html_path.replace(".html", ".pdf")
+
+    import subprocess
+    
+    subprocess.run([
+        "wkhtmltopdf",
+        "--enable-local-file-access",
+        html_path,
+        pdf_path
+    ], check=True)
+
+    print(f"📄 PDF created: {pdf_path}")
+    
 
     # Send email with attachment
     print("🚀 Sending email with attachment…")
@@ -369,8 +445,7 @@ Example:
     send_email(
         subject=f"☕ Daily Merch Ideas — {today}",
         html_body=email_html,
-        attachment_path=html_path
-    )
+        attachment_path=pdf_path)
 
     print("📬 Email sent successfully with attachment!")
 
