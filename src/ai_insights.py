@@ -2,35 +2,53 @@ import os
 from openai import OpenAI
 import html
 import json
+from utils import normalize_for_pdf, normalize_watchlist_for_pdf, extract_display_signals, normalize_hml
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def generate_tier1_intro_outro(trends, date_str):
     """
-    Generates a short, playful intro and outro for Tier 1 emails.
-    Uses existing enriched trend data for context.
+    Generates a friendly, playful intro and outro for Tier 1 emails.
+    Includes subtle upsell to Tier 2 (Builder edition) and trademark reminder.
     """
-
-    trend_titles = [t.get("title", "") for t in trends[:4]]
+    trend_titles = [t.get("slogan", "") for t in trends[:4]]
     titles_text = "; ".join(trend_titles)
 
     prompt = f"""
-You are writing a short email for creative merch sellers.
+You are writing a short email for creative merch sellers in the Merch Scout brand voice.
 
 Context:
 These are culture-based merch ideas inspired by recent trends.
 Trend examples: {titles_text}
 
+Important positioning:
+Daily Merch Scout helps creators save research time by surfacing cultural trends
+with potential merch opportunities.
+
+It does NOT guarantee sales or winning products. Success depends on the creator’s
+design execution, timing, and platform strategy.
+
+The messaging should gently remind readers that the tool helps them discover
+ideas faster, but they still bring the creativity.
+
 TASK:
 1. Write a friendly, playful INTRO (1–2 sentences).
-2. Write a warm, encouraging OUTRO (1–2 sentences).
+2. Write a warm, encouraging OUTRO (2–3 sentences), including:
+    - Outro should subtly upsell Tier 2 (Builder edition) without being pushy
+    - Outro should include a reminder to check trademarks
+    - Outro should include a light, subtle conclusion to the email
 
-RULES:
-- Do NOT mention Reddit or social platforms
-- Keep it casual and human
-- No emojis overload (1 max)
-- No salesy language
-- Avoid generic phrases like "unlock your creativity"
+Tier 1 email should be:
+- Friendly, playful, slightly witty
+- Casual, human, not corporate
+- Light emoji usage (max 1)
+
+Tier 2 (Builder edition) includes:
+- Trend signls
+- Buyer psychology
+- Design direction
+- Target audience
+- Niche variations
 
 Return valid JSON only:
 {{
@@ -46,265 +64,279 @@ Return valid JSON only:
             temperature=0.7
         )
         text = response.choices[0].message.content
-        #print("Raw AI intro/outro response:", text)  # Debug print
-
         data = json.loads(text)
-        #print("Parsed AI intro/outro JSON:", data)  # Debug print
         return data.get("intro", ""), data.get("outro", "")
-
     except Exception as e:
-        print("⚠️ AI intro/outro failed:", e)
+        print("⚠️ AI Tier 1 intro/outro failed:", e)
         return (
             "A few culture → merch ideas stood out recently. Here are the ones worth a quick look.",
-            "If one of these sparked something, that’s a good day’s work. Always double-check trademarks before listing."
+            "If one of these sparked something, that’s a good day’s work. Check trademarks before listing and have fun exploring these ideas!"
         )
 
 
-# analyze_trend is a legacy / future helper (not used in run())
-def analyze_trend(trend_name, context=""):
+def generate_tier2_intro_outro(trends, date_str):
+    """
+    Generates a friendly, professional intro and outro for Tier 2 emails.
+    No upsell needed, only encouragement, trend context, and trademark reminder.
+    """
+    trend_titles = [t.get("merch_headline", "") for t in trends[:4]]
+    titles_text = "; ".join(trend_titles)
+
     prompt = f"""
-You are a merch trend analyst.
+You are writing a short email for creative merch sellers in the Merch Scout brand voice.
 
-Trend: {trend_name}
-Context: {context}
+Context:
+These are culture-based merch ideas with full Builder edition details.
+Trend examples: {titles_text}
 
-Return:
-1. Why this trend works emotionally (2–3 sentences)
-2. 2–3 merch angles (bulleted)
-3. Best product formats
-4. Any risks or things to avoid
+Important positioning:
+Daily Merch Scout helps creators save research time by surfacing cultural trends
+with potential merch opportunities.
 
-Be concise. Avoid fluff.
+It does NOT guarantee sales or winning products. Success depends on the creator’s
+design execution, timing, and platform strategy.
+
+The messaging should gently remind readers that the tool helps them discover
+ideas faster, but they still bring the creativity.
+
+Tier 2 email should be:
+- Friendly, playful, slightly witty
+- Casual, human, not corporate
+- Light emoji usage (max 1)
+- Give 1–2 sentences intro
+- Give 1–2 sentences outro
+- Outro should include a reminder to check trademarks
+- Outro should include a light, subtle conclusion to the email
+- Outro should include a reminder that the attached Merch Brief includes things like: trend signls, buyer psychology, target audience, design direction, and niche variations
+- Do NOT mention Tier 3 or upsell
+
+Return valid JSON only:
+{{
+  "intro": "",
+  "outro": ""
+}}
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.6
-    )
-
-    return response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7
+        )
+        text = response.choices[0].message.content
+        data = json.loads(text)
+        return data.get("intro", ""), data.get("outro", "")
+    except Exception as e:
+        print("⚠️ AI Tier 2 intro/outro failed:", e)
+        return (
+            "Here’s a closer look at today’s culture → merch ideas, broken down for your creative edge.",
+            "Check trademarks before listing. Hope these insights spark some fun merch creations!"
+        )
 
 from ai_insights import generate_tier1_intro_outro
 
-def generate_tier1_email(date_str, trends, max_trends=4):
+def tier1_opportunity_line(trend: dict) -> str:
+    """
+    Returns a teaser line based on hidden signals.
+    """
+
+    signals = trend.get("trend_signals", {})
+    sniff = trend.get("tier2_sniff", {})
+
+    merch = (signals.get("merch_potential") or "").lower()
+    spread = (signals.get("cross_platform_spread") or "").lower()
+    verdict = (sniff.get("verdict") or "").lower()
+    score = sniff.get("sniff_score")
+
+    # ---------- HIGH OPPORTUNITY ----------
+    if verdict == "high" or (isinstance(score, int) and score >= 75):
+        return "🔹 Strong opportunity — worth acting quickly"
+
+    if merch == "high" and spread in ("medium", "high"):
+        return "🔹 Early-stage trend with strong merch potential"
+
+    # ---------- SOLID / WATCH ----------
+    if merch in ("medium", "high"):
+        return "🔹 Gaining traction — worth watching closely"
+
+    if spread == "high":
+        return "🔹 Broad appeal with room for creative angles"
+
+    # ---------- SAFE DEFAULT ----------
+    return "🔹 Interesting concept with merch potential"
+
+def generate_tier1_email(date_str, trends, max_trends=4, watchlist=None, total_raw_trends=None, total_trends_qualified=None):
+    """
+    Generates the Tier 1 Merch Scout email.
+    - Uses friendly intro/outro from AI
+    - Formats each trend with Tier 2 email styling (tables, spacing)
+    - Shows top N trends and mentions watchlist count
+    """
     intro, outro = generate_tier1_intro_outro(trends, date_str)
+
+    from utils import normalize_for_pdf
+
+    normalized_trends = [normalize_for_pdf(t) for t in trends]
 
     html_parts = []
 
     # ---- INTRO ----
-    html_parts.append(f"""
-    <p><strong>Hey there!</strong></p>
-    <p>{intro}</p>
-    """)
+    html_parts.append(f"<p>{intro}</p>")
 
-    # ---- TRENDS ----
-    for i, trend in enumerate(trends[:max_trends], 1):
-        title = trend.get("title", "Untitled trend")
-        slogan = trend.get("slogan", "—")
-        merch_angle = trend.get("why_it_works", "")
-        merch_ideas = trend.get("merch_ideas", [])
+    if total_raw_trends and total_trends_qualified:
+        html_parts.append(f"""
+        <p><b>📊 Today’s scan:</b><br>
+        {total_raw_trends} culture trends analyzed<br>
+        {total_trends_qualified} trends qualified for merch potential</p>
+        """)
 
-        #<table width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0; border-top: 1px solid #e5e5e5;">
+    # ---- TOP TRENDS ----
+    for i, trend in enumerate(normalized_trends[:max_trends], 1):
+        title = trend.get("merch_headline", "Untitled trend")
+        #slogan = trend.get("slogan", "—")
+        merch_angle = trend.get("core_insight", "")
+        products = trend.get("secondary_products", [])
 
+        #merch_html = "<br>".join(f"• {html.escape(item)}" for item in merch_ideas) if merch_ideas else "• Mug<br>• T-shirt"
 
-        # Turn merch ideas into a readable list
-        merch_html = "<br>".join(f"• {html.escape(item)}" for item in merch_ideas) if merch_ideas else "• Mug<br>• T-shirt"
+        merch_html = "<br>".join(
+            f"• {html.escape(p)}" for p in products[:2]
+        ) if products else "• T-shirt<br>• Mug"
+        opportunity = tier1_opportunity_line(trend)
 
         html_parts.append(f"""
             <table width="100%" cellpadding="0" cellspacing="0"
                 style="margin: 28px 0; border-top: 2px solid #e5e5e5;">
             <tr>
                 <td style="padding-top: 16px; font-family: Arial, sans-serif;">
-
-                <p style="margin: 0 0 10px 0; font-size: 19px; font-weight: bold; color: #111;">
-                    🔥 <strong>Trend #{i}</strong>
-                </p>
-
-                <p style="margin: 0 0 10px 0; font-size: 18px; font-weight: bold; color: #111;">
-                    {html.escape(title)}
-                </p>
-
-                <p style="margin: 0 0 12px 0; font-size: 14px;">
-                    ☕ <strong>Slogan</strong><br>
-                    <em>{html.escape(slogan)}</em>
-                </p>
-
-                <p style="margin: 0 0 12px 0; font-size: 14px;">
-                    <strong>Why it works</strong><br>
-                    {html.escape(merch_angle)}
-                </p>
-
-                <p style="margin: 0; font-size: 14px;">
-                    <strong>Best merch fit</strong><br>
-                    {merch_html}
-                </p>
-
+                    <p style="margin: 0 0 10px 0; font-size: 19px; font-weight: bold; color: #111;">
+                        🔥 <strong>Trend #{i}</strong>
+                    </p>
+                    <p style="margin: 0 0 10px 0; font-size: 18px; font-weight: bold; color: #111;">
+                        {html.escape(title)}
+                    </p>
+                    <p style="margin: 0 0 10px 0; font-size: 13px; color: #666;">
+                        {html.escape(opportunity)}
+                    </p>
+                    <p style="margin: 0 0 12px 0; font-size: 14px;">
+                        <strong>Why it works</strong><br>
+                        {html.escape(merch_angle)}
+                    </p>
+                    <p style="margin: 0; font-size: 14px;">
+                        <strong>Best merch fit</strong><br>
+                        {merch_html}
+                    </p>
                 </td>
             </tr>
             </table>
-            """)
-
-    html_parts.append(f"""
-        <table width="100%" cellpadding="0" cellspacing="0"
-            style="margin: 32px 0; border-top: 2px dashed #e5e5e5;">
-        <tr>
-            <td style="padding-top: 16px; font-size: 14px; color: #333; line-height: 1.5;">
-            <strong>Want to go a level deeper?</strong><br><br>
-            The Builder edition breaks these ideas down further — alternate slogans,
-            design direction, competition signals, and keyword-ready details you can
-            actually list from.<br><br>
-            No pressure. Just a heads-up if today’s ideas sparked something.
-            </td>
-        </tr>
-        </table>
         """)
 
-    # ---- OUTRO ----
-    html_parts.append(f"""
-    <p>{outro}</p>
-
-    <p>
-      Friendly reminder to double-check trademarks or protected phrases
-      before listing anything for sale.
-    </p>
-
-    <p>
-      ☕ Until next time,<br>
-      <strong>Daily Merch Bot</strong>
-    </p>
-    """)
-
-    return "\n".join(html_parts)
-
-def generate_tier2_email(date_str, trends, max_trends=4):
-    intro, outro = generate_tier1_intro_outro(trends, date_str)
-
-    html_parts = []
-
-    # ---- INTRO ----
-    html_parts.append(f"""
-    <p><strong>Hey there!</strong></p>
-    <p>{intro}</p>
-    """)
-
-    # ---- TRENDS ----
-    for i, trend in enumerate(trends[:max_trends], 1):
-        title = trend.get("title", "Untitled trend")
-        slogan = trend.get("slogan", "—")
-        merch_angle = trend.get("why_it_works", "")
-        merch_ideas = trend.get("merch_ideas", [])
-
-        # ---- Pull trend signals ----
-        signals = trend.get("trend_signals", {})
-        rationale = trend.get("rationale", "—")
-
-        print("EMAIL SIGNALS (after extraction):", signals)
-        print("EMAIL SIGNALS KEYS:", list(signals.keys()))
-        print("AI ENRICHMENT KEYS:", trend.get("ai_enrichment", {}).keys())
-
-        rationale = signals.get("rationale")
-        if not rationale or not str(rationale).strip():
-            rationale = "—"
-
-        print("EMAIL SIGNALS:", signals)
-
-        merch_html = "<br>".join(f"• {html.escape(item)}" for item in merch_ideas) if merch_ideas else "• Mug<br>• T-shirt"
-
-        # ---- Trend HTML ----
+    # ---- WATCHLIST MENTION ----
+    if watchlist:
         html_parts.append(f"""
-            <table width="100%" cellpadding="0" cellspacing="0"
-                style="margin: 28px 0; border-top: 2px solid #e5e5e5;">
-            <tr>
-                <td style="padding-top: 16px; font-family: Arial, sans-serif;">
-
-                <p style="margin: 0 0 10px 0; font-size: 19px; font-weight: bold; color: #111;">
-                    🔥 <strong>Trend #{i}</strong>
-                </p>
-
-                <p style="margin: 0 0 6px 0; font-size: 18px; font-weight: bold; color: #111;">
-                    {html.escape(title)}
-                </p>
-
-                <!-- 🟢🟡🔴 Trend Signals Table -->
-                <table width="100%" cellpadding="6" cellspacing="0"
-                    style="font-size: 13px; border-collapse: collapse; background: #fafafa; border-radius: 6px; margin: 6px 0 12px 0;">
-                <tr>
-                    <td><strong>Merch Potential</strong></td>
-                    <td>{signal_badge(signals.get("merch_potential"))}</td>
-                </tr>
-                <tr>
-                    <td><strong>Hashtag Growth</strong></td>
-                    <td>{signal_badge(signals.get("hashtag_growth"))}</td>
-                </tr>
-                <tr>
-                    <td><strong>Memetic Variations</strong></td>
-                    <td>{signal_badge(signals.get("memetic_variations"))}</td>
-                </tr>
-                <tr>
-                    <td><strong>Cross-Platform Spread</strong></td>
-                    <td>{signal_badge(signals.get("cross_platform_spread"))}</td>
-                </tr>
-                </table>
-
-                <p style="margin: 0 0 12px 0; font-size: 14px;">
-                    ☕ <strong>Slogan</strong><br>
-                    <em>{html.escape(slogan)}</em>
-                </p>
-
-                <p style="margin: 0 0 12px 0; font-size: 14px;">
-                    <strong>Why it works</strong><br>
-                    {html.escape(merch_angle)}
-                </p>
-
-                <p style="margin: 0 0 12px 0; font-size: 14px;">
-                    <strong>Why this matters now</strong><br>
-                    {html.escape(rationale)}
-                </p>
-
-                <p style="margin: 0; font-size: 14px;">
-                    <strong>Best merch fit</strong><br>
-                    {merch_html}
-                </p>
-
-                </td>
-            </tr>
-            </table>
+        <table width="100%" cellpadding="0" cellspacing="0"
+            style="margin: 28px 0; border-top: 2px dashed #e5e5e5;">
+        </table>
         """)
 
-    # ---- CTA ----
-    html_parts.append(f"""
-        <table width="100%" cellpadding="0" cellspacing="0"
-            style="margin: 32px 0; border-top: 2px dashed #e5e5e5;">
-        <tr>
-            <td style="padding-top: 16px; font-size: 14px; color: #333; line-height: 1.5;">
-            <strong>Want the full breakdown?</strong><br><br>
-            Your attached Builder PDF includes deeper signal analysis,
-            platform patterns, and merch execution notes for all 20 trends.
-            </td>
-        </tr>
-        </table>
-    """)
-
     # ---- OUTRO ----
+    html_parts.append(f"<p>{outro}</p>")
     html_parts.append(f"""
-    <p>{outro}</p>
-
-    <p>
-      Friendly reminder to double-check trademarks or protected phrases
-      before listing anything for sale.
-    </p>
-
-    <p>
-      ☕ Until next time,<br>
-      <strong>Daily Merch Bot</strong>
-    </p>
+    <p>☕ Until next time,<br>
+    <strong>Daily Merch Scout</strong></p>
     """)
 
     return "\n".join(html_parts)
 
+def generate_tier2_email(date_str, trends, watchlist=None, total_raw_trends=None, total_trends_qualified=None):
+    """
+    Generates the Tier 2 Merch Scout email using normalized trend data.
+    """
+
+    from utils import normalize_for_pdf, normalize_watchlist_for_pdf, extract_display_signals
+
+    normalized_trends = [normalize_for_pdf(t) for t in trends]
+
+    intro, outro = generate_tier2_intro_outro(normalized_trends, date_str)
+
+    html = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height:1.5; color: #222;">
+
+    <p>{intro}</p>
+
+    <p><b>📊 Today’s scan:</b><br>
+    {total_raw_trends} culture trends analyzed<br>
+    {total_trends_qualified} trends qualified for execution</p>
+    """
+
+    # -----------------------------
+    # TOP TRENDS
+    # -----------------------------
+    for idx, trend in enumerate(normalized_trends, 1):
+        signals_display = extract_display_signals(trend)
+        snapshot_html = "<ul style='margin: 0 0 12px 16px; padding: 0; font-size: 14px;'>"
+        for key, value in signals_display.items():
+            snapshot_html += f"<li><strong>{key}:</strong> {value}</li>"
+        snapshot_html += "</ul>"
+
+        title = trend.get("merch_headline", "")
+        insight = trend.get("core_insight", "")
+        products = trend.get("secondary_products", [])[:3]
+        product_list = "".join([f"<li>{p}</li>" for p in products])
+
+        html += f"""
+        <div style="border-bottom:1px solid #ddd; margin-bottom:16px; padding-bottom:12px;">
+            <h3>🔥 Trend #{idx}: {title}</h3>
+
+            <p><b>Core Insight</b><br>{insight}</p>
+
+            <p><b>Best Merch Fit</b></p>
+            <ul>{product_list}</ul>
+
+            <p><b>Signal Snapshot</b></p>
+            {snapshot_html}
+        </div>
+        """
+
+    # -----------------------------
+    # WATCHLIST
+    # -----------------------------
+    if watchlist:
+        html += f"<h3>👀 Watchlist Signals ({len(watchlist)})</h3>"
+        for idx, w_trend in enumerate(watchlist, 1):
+            w = normalize_watchlist_for_pdf(w_trend)
+            title = w.get("merch_headline", "")
+            insight = w.get("core_insight", "")
+            products = w.get("secondary_products", [])[:2]
+            product_list = "".join([f"<li>{p}</li>" for p in products])
+
+            html += f"""
+            <div style="border-left:4px solid #f0c040; padding-left:8px; margin-bottom:12px;">
+                <h4>👀 Watchlist #{idx}: {title}</h4>
+                <p>{insight}</p>
+            """
+            if products:
+                html += f"""
+                <p><b>Potential Merch Fit</b></p>
+                <ul>{product_list}</ul>
+                """
+            html += "</div>"
+
+    # -----------------------------
+    # SUMMARY & OUTRO
+    # -----------------------------
+    html += f"""
+    <hr style='margin:24px 0;'>
+
+    <p>{outro}</p>
+
+    <p style="margin-top:24px; font-style:italic; color:#555;">☕ Cheers,<br>Daily Merch Scout</p>
+    </body>
+    </html>
+    """
+
+    return html
 
 
 # Map trend signal levels to emojis
@@ -319,15 +351,107 @@ SIGNAL_EMOJI = {
 
 def signal_badge(value):
     if not value:
-        return "⚪️"
+        return "⚪️ —"
 
-    value = str(value).strip()
+    v = str(value).strip().lower()
 
-    emoji = SIGNAL_EMOJI.get(value)
-    if not emoji:
+    # Normalize common AI variations
+    if "high" in v or "strong" in v or "mainstream" in v:
+        label = "High"
+    elif "medium" in v or "moderate" in v or "emerging" in v:
+        label = "Medium"
+    elif "low" in v or "weak" in v or "niche" in v:
+        label = "Low"
+    else:
         return f"⚪️ {value}"
 
-    return f"{emoji} {value}"
+    emoji = SIGNAL_EMOJI.get(label, "⚪️")
+    return f"{emoji} {label}"
+
+def outlook_interpretation(score):
+    """
+    Returns a short human-friendly interpretation
+    for the Sales Outlook Score.
+    """
+    try:
+        score = int(score)
+    except:
+        return ""
+
+    if score >= 80:
+        return "🔥 Strong commercial potential — worth prioritizing"
+    elif score >= 60:
+        return "✅ Solid opportunity — good listing candidate"
+    elif score >= 40:
+        return "⚖️ Viable with strong design execution"
+    elif score >= 20:
+        return "⚠️ Niche appeal — test before scaling"
+    else:
+        return "👉 Likely to sell only with a strong design angle"
+
+def normalize_level(value):
+    """
+    Standardizes AI output to: High / Medium / Low
+    """
+    if not value:
+        return "—"
+
+    v = str(value).strip().lower()
+
+    if v in ("high", "strong"):
+        return "High"
+
+    if v in ("medium", "moderate", "median"):
+        return "Medium"
+
+    if v in ("low", "weak"):
+        return "Low"
+
+    return value
+
+def score_badge(score):
+    """
+    Converts numeric score (0–100) into color badge.
+    """
+    try:
+        s = int(score)
+    except:
+        return f"⚪️ {score}"
+
+    if s >= 70:
+        icon = "🟢"
+    elif s >= 40:
+        icon = "🟡"
+    else:
+        icon = "🔴"
+
+    return f"{icon} {s}"
+
+def format_percent(value):
+    if value is None or value == "":
+        return "—"
+
+    try:
+        v = int(value)
+        return f"{v}%"
+    except:
+        return str(value)
+
+def format_audience_size(size: str) -> tuple[str, str]:
+    """
+    Returns (emoji, label) for audience size.
+    Input should be one of: small, medium, large
+    """
+
+    size = (size or "").lower()
+
+    mapping = {
+        "low":  ("🟡", "Small"),
+        "medium": ("🟡", "Medium"),
+        "high":  ("🟢", "Large"),
+    }
+
+    return mapping.get(size, ("⚪️", "Unknown"))
 
 
 

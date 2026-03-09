@@ -17,8 +17,8 @@ def get_daily_trends():
 
     #print("Feed status:", feed.get("status", "no status"))
     #print("Feed bozo:", feed.bozo)
-    if feed.bozo:
-        print("Feed error:", feed.bozo_exception)
+    #if feed.bozo:
+    #    print("Feed error:", feed.bozo_exception)
 
 
     return trends
