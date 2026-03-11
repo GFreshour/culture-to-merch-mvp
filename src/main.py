@@ -14,7 +14,6 @@ from datetime import datetime, timedelta
 from tier2_sniff import run_tier2_sniff
 from trend_memory import dedupe_trends, remove_recent_trends
 
-# analyze_trend is a legacy / future helper (not used in run())
 from ai_insights import (
     generate_tier1_email,
     generate_tier2_email,
@@ -125,14 +124,32 @@ if TEST_ENV:
         "garyfreshour@gmail.com"
     ]
 else:
-    # Send to brevo subscribers, but for now, just send to us again.
+    # Send to Brevo subscribers
+    from utils import get_brevo_contacts
     FROM_EMAIL = "gary_freshour@hotmail.com"
-    TO_EMAILS = [
-        "daniellefreshour@gmail.com",
-        "garyfreshour@gmail.com"
-    ]
 
+    # Fetch all contacts
+    contacts = get_brevo_contacts(list_id=12)
+    
+    # Filter helpers
+    def get_contacts_for_tier(contacts, tier):
+        return [
+            c for c in contacts
+            if c.get("TIER_LEVEL") == tier and c.get("SUB_STATUS") == "Active"
+        ]
+    
+    tier1_contacts = get_contacts_for_tier(contacts, "Tier 1")
+    tier2_contacts = get_contacts_for_tier(contacts, "Tier 2")
 
+    #TO_EMAILS = get_brevo_contacts(list_id=12)  # Merch Scout Subscribers list ID
+
+    # --- TEST PRINT & EXIT ---
+    #print("🧪 TEST MODE — printing Brevo contacts from list 12")
+    #print(f"📬 Total contacts fetched: {len(TO_EMAILS)}")
+    #print("Sample emails:", TO_EMAILS[:10])  # first 10 for safety
+    #print("✅ Brevo list test complete. Exiting without running main pipeline.")
+    #import sys
+    #sys.exit()  # stop execution before sending anything
 
 SUBREDDIT_QUOTAS = {
     "funny": 14,
@@ -358,10 +375,17 @@ def enrich_top5_with_ai(trend):
         return {}
 
 # ---------------- Email Client Setup ----------------
-def send_email(subject, html_body, attachment_path=None):
+def send_email(subject, html_body, attachment_path=None, to_emails=None):
+
     api_key = os.getenv("BREVO_API_KEY")
     if not api_key:
         raise RuntimeError("BREVO_API_KEY not set")
+
+    # Determine recipients
+    if to_emails:
+        recipients = to_emails
+    else:
+        recipients = TO_EMAILS
 
     configuration = sib_api_v3_sdk.Configuration()
     configuration.api_key["api-key"] = api_key
@@ -381,7 +405,8 @@ def send_email(subject, html_body, attachment_path=None):
         })
 
     email = sib_api_v3_sdk.SendSmtpEmail(
-        to=[{"email": e} for e in TO_EMAILS],
+        to=[{"email": FROM_EMAIL}],
+        bcc=[{"email": e} for e in recipients],
         sender={"email": FROM_EMAIL, "name": "Daily Merch Bot"},
         subject=subject,
         html_content=html_body,
@@ -390,17 +415,62 @@ def send_email(subject, html_body, attachment_path=None):
 
     api_instance.send_transac_email(email)
 
+def send_failure_email(error: Exception):
+    """Send an alert email to the developer if the main pipeline fails."""
+    from_email = "gary_freshour@hotmail.com"
+    to_emails = ["garyfreshour@gmail.com", "gary_freshour@hotmail.com"]
+    subject = "⚠️ Merch Scout Pipeline Failed"
+    import traceback
+    body = f"""
+    <p>The Merch Scout pipeline failed to execute.</p>
+    <p><strong>Error:</strong></p>
+    <pre>{html.escape(str(error))}</pre>
+    <p><strong>Traceback:</strong></p>
+    <pre>{html.escape(traceback.format_exc())}</pre>
+    """
+
+    try:
+        api_key = os.getenv("BREVO_API_KEY")
+        if not api_key:
+            print("⚠️ BREVO_API_KEY not set. Cannot send failure email.")
+            return
+
+        configuration = sib_api_v3_sdk.Configuration()
+        configuration.api_key["api-key"] = api_key
+        api_client = sib_api_v3_sdk.ApiClient(configuration)
+        api_instance = sib_api_v3_sdk.TransactionalEmailsApi(api_client)
+
+        email = sib_api_v3_sdk.SendSmtpEmail(
+            to=[{"email": e} for e in to_emails],
+            sender={"email": from_email, "name": "Merch Scout Alert"},
+            subject=subject,
+            html_content=body
+        )
+
+        api_instance.send_transac_email(email)
+        print("✅ Failure email sent successfully.")
+
+    except Exception as e:
+        print(f"❌ Failed to send failure email: {e}")
+
 # For sending Tier 1 Emails
-def send_tier1_email(date_str, email_body):
+def send_tier1_email(to_email=None, date_str=None, email_body=None):
+
+    recipients = to_email if to_email else TO_EMAILS
+
     send_email(
+        to_emails=recipients,
         subject=f"☕ Culture → Merch Ideas — {date_str}",
-        html_body=email_body,
-        attachment_path=None
+        html_body=email_body
     )
 
 # For sending Tier 2 Emails
-def send_tier2_email(date_str, email_body, pdf_path):
+def send_tier2_email(to_email=None, date_str=None, email_body=None, pdf_path=None):
+
+    recipients = to_email if to_email else TO_EMAILS
+
     send_email(
+        to_emails=recipients,
         subject=f"☕ Builder Edition — Merch Ideas — {date_str}",
         html_body=email_body,
         attachment_path=pdf_path
@@ -741,35 +811,6 @@ def run():
     print(f"PDF TOP 5 trends count: {len(pdf_trends)}")
     print(f"PDF Watchlist trends count: {len(pdf_watchlist)}")
 
-    #def normalize_hml(value):
-    #    if not value:
-    #        return "Low"
-
-    #    v = str(value).strip().lower()
-
-    #    if v in ["high", "strong", "large"]:
-    #        return "High"
-    #    elif v in ["medium", "moderate"]:
-    #        return "Medium"
-    #    elif v in ["low", "small", "weak"]:
-    #        return "Low"
-
-    #    return "Medium"
-
-    #def extract_display_signals(trend):
-    #    signals = trend.get("trend_signals", {}) or {}
-
-    #    momentum = normalize_hml(signals.get("hashtag_growth"))
-    #    buyer_depth = normalize_hml(signals.get("merch_potential"))
-    #    design_flex = normalize_hml(signals.get("memetic_variations"))
-    #    monetization = normalize_hml(signals.get("search_volume_mentions"))
-
-    #    return {
-    #        "Momentum": momentum,
-    #        "Buyer Depth": buyer_depth,
-    #        "Design Flexibility": design_flex,
-    #        "Monetization Potential": monetization
-    #    }
 
     # =========================
     # Build HTML report to be converted to PDF
@@ -1093,27 +1134,52 @@ def run():
         pdf_path
     ], check=True)
     print(f"📄 PDF created: {pdf_path}")
+    
 
     # Sending Tiered Emails
-    print("📬 Sending Tier 1 email (no attachment)…")
-    send_tier1_email(
-        date_str=today,
-        email_body=tier1_email_body
-    )
+    if TEST_ENV:
+        print("🧪 TEST MODE — sending both emails to developer")
 
-    print("📬 Sending Tier 2 email (with attachment)…")
-    send_tier2_email(
-        date_str=today,
-        email_body=tier2_email_body,
-        pdf_path=pdf_path
-    )
+        send_tier1_email(
+            date_str=today,
+            email_body=tier1_email_body
+        )
 
+        send_tier2_email(
+            date_str=today,
+            email_body=tier2_email_body,
+            pdf_path=pdf_path
+        )
+
+    else:
+        print("📬 Sending Tier 1 emails (no attachment)…")
+        tier1_emails = [c["email"] for c in tier1_contacts]
+        send_tier1_email(
+            to_email=tier1_emails,
+            date_str=today,
+            email_body=tier1_email_body
+        )
+
+        print("📬 Sending Tier 2 emails (with attachment)…")
+        tier2_emails = [c["email"] for c in tier2_contacts]
+        send_tier2_email(
+            to_email=tier2_emails,
+            date_str=today,
+            email_body=tier2_email_body,
+            pdf_path=pdf_path
+        )
 
     print("📬 Tiered emails sent successfully!")
 
 
 # ---------------- ENTRY ----------------
 if __name__ == "__main__":
-    run()
+    try:
+        run()
+    except Exception as e:
+        print(f"❌ Main pipeline failed: {e}")
+        if not TEST_ENV:
+            send_failure_email(e)
+        raise  # keep the error in logs and exit with failure
 
 

@@ -79,3 +79,53 @@ def normalize_hml(value):
             return "Low"
 
         return "Medium"
+
+import os
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+
+def get_brevo_contacts(list_id: int):
+    """
+    Fetches all contacts from a specific Brevo list ID.
+    Handles pagination to retrieve all contacts.
+    Returns a list of dictionaries with email, TIER_LEVEL, and SUB_STATUS.
+    """
+    api_key = os.getenv("BREVO_API_KEY")
+    if not api_key:
+        raise RuntimeError("BREVO_API_KEY not set")
+
+    configuration = sib_api_v3_sdk.Configuration()
+    configuration.api_key["api-key"] = api_key
+    api_client = sib_api_v3_sdk.ApiClient(configuration)
+    contacts_api = sib_api_v3_sdk.ContactsApi(api_client)
+
+    all_contacts = []
+    limit = 50
+    offset = 0
+
+    try:
+        while True:
+            response = contacts_api.get_contacts(limit=limit, offset=offset)
+            
+            # Filter for contacts in our list
+            for c in response.contacts:
+                if list_id in c.get("listIds", []):
+                    contact_info = {
+                        "email": c.get("email"),
+                        "TIER_LEVEL": c.get("attributes", {}).get("TIER_LEVEL", "Tier 1"),  # default
+                        "SUB_STATUS": c.get("attributes", {}).get("SUB_STATUS", "Inactive")   # default
+                    }
+                    all_contacts.append(contact_info)
+
+            if len(response.contacts) < limit:
+                break
+
+            offset += limit
+
+        print(f"✅ Total contacts fetched from list {list_id}: {len(all_contacts)}")
+        return all_contacts
+
+    except ApiException as e:
+        print(f"❌ Failed to fetch contacts: {e}")
+        return []
+
