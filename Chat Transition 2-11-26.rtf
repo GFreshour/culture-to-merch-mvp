@@ -1,0 +1,293 @@
+{\rtf1\fbidis\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fnil\fcharset0 Calibri;}{\f1\fnil Calibri;}{\f2\fnil\fcharset1 Segoe UI Emoji;}{\f3\fnil\fcharset1 Cambria Math;}{\f4\fnil\fcharset1 Segoe UI Symbol;}{\f5\fnil\fcharset1 Segoe UI Symbol;}}
+{\*\generator Riched20 10.0.19041}{\*\mmathPr\mmathFont3\mwrapIndent1440 }\viewkind4\uc1 
+\pard\sa200\sl276\slmult1\f0\fs22\lang9 Github structure: Output (output html files and pdf files), SRC (main body of the code. PY files I'm using: ai_insights.py, main.py, tier2_sniff.py, trends_reddit.py), VENV). \par
+These are in my Requirements: \par
+certifi==2026.1.4\par
+charset-normalizer==3.4.4\par
+feedparser==6.0.12\par
+idna==3.11\par
+lxml==6.0.2\par
+numpy==2.4.0\par
+pandas==2.3.3\par
+praw==7.8.1\par
+prawcore==2.4.0\par
+python-dateutil==2.9.0.post0\par
+pytrends==4.9.2\par
+pytz==2025.2\par
+requests==2.32.5\par
+sgmllib3k==1.0.0\par
+six==1.17.0\par
+tzdata==2025.3\par
+update-checker==0.18.0\par
+urllib3==2.6.2\par
+websocket-client==1.9.0\par
+sib-api-v3-sdk\par
+openai>=1.0.0.\par
+General Idea of the Tiers, but we can tweak as we go: \par
+\b\fs24 Tier 1 \f1\emdash  Inspiration (what you already have)\par
+\b0\fs22 Audience: casual sellers, scanners, \ldblquote send me ideas\rdblquote\par
+Contents\par
+
+\pard\li720\sa200\sl276\slmult1 AI-written intro + outro\par
+5\endash 10 curated trends\par
+
+\pard\sa200\sl276\slmult1 For each trend:\par
+
+\pard\li720\sa200\sl276\slmult1 Merch angle\par
+Primary slogan\par
+Best merch fit (primary + secondary)\par
+No deep strategy, no long explanations\par
+
+\pard\sa200\sl276\slmult1\f0\lang1033 Frequency:\par
+\tab 3 Times per week\f1\lang9\par
+Email goal\par
+
+\pard\li720\sa200\sl276\slmult1\ldblquote Ooooh, that\rquote s interesting. I could make something from this.\rdblquote\par
+
+\pard\sa200\sl276\slmult1\par
+\b\fs24 Tier 2 \emdash  Builder (action-oriented)\par
+\b0\fs22 Audience: people who want to execute\par
+Everything in Tier 1, plus\f0\lang1033  Attachement including\f1\lang9\par
+
+\pard\li720\sa200\sl276\slmult1 2\endash 3 slogan alternates per trend\par
+\f0\lang1033 Competition - how likely is it that others are doing this same thing\f1\lang9\par
+Design breakdown (the CANVA-style blocks you already generate)\par
+Slightly more explanation of why the merch fit works\par
+Optional \ldblquote why this will sell\rdblquote  paragraph per trend\par
+\f0\lang1033 ETSY Keywords\f1\lang9\par
+
+\pard\sa200\sl276\slmult1\f0\lang1033 Frequency:\par
+\tab Daily\f1\lang9\par
+Email goal\par
+
+\pard\li720\sa200\sl276\slmult1\ldblquote I could list this today.\rdblquote\par
+
+\pard\sa200\sl276\slmult1\par
+\b\fs24 Tier 3 \emdash  Operator / Pro\par
+\b0\fs22 Audience: serious sellers, scaling mindset\par
+\f0\lang1033 Personalize the merch requests.\f1\lang9\par
+Everything in Tier 2, plus\f0\lang1033  Attachement including\f1\lang9 :\par
+
+\pard\li720\sa200\sl276\slmult1 Risk notes (copyright, overused phrases, saturation)\par
+Trend timing (flash vs evergreen)\par
+Platform angle (Etsy vs \f0\lang1033 RedBubble\f1\lang9  vs Shopify\f0\lang1033  vs Amazon vs EBay\f1\lang9 )\par
+Maybe 1 \ldblquote don\rquote t bother with this trend\rdblquote  callout\par
+
+\pard\sa200\sl276\slmult1\f0\lang1033 Frequency:\par
+\tab Daily\f1\lang9\par
+Email goal\par
+
+\pard\li720\sa200\sl276\slmult1\ldblquote I understand the tradeoffs and can decide smartly.\rdblquote\par
+
+\pard\sa200\sl276\slmult1\b\f2\fs24\u-10178?\u-8736?\f1  \f0 Culture \f3\u8594?\f1  \f0 Merch MVP: System Overview\par
+\par
+This is a daily pipeline that:\par
+\par
+Pulls Reddit trends\par
+\par
+Scores viability\par
+\par
+Selects top 20 (quota balanced)\par
+\par
+Runs AI enrichment + commercial sniff test\par
+\par
+Generates:\par
+\par
+Tier 1 email (teaser)\par
+\par
+Tier 2 email (top 4 + PDF attached)\par
+\par
+Full HTML + PDF report\par
+\par
+JSON archive\par
+\par
+\f4\u-10179?\u-8959?\f1  \f0 High-Level Execution Flow (main.py \f3\u8594?\f1  \f0 run())\par
+\f2 1\u-497?\f5\u8419?\f0  Fetch Raw Trends (Cheap)\par
+trends = get_reddit_trends()\par
+\par
+\par
+Source: trends_reddit.py\par
+\par
+Pulls hot posts from:\par
+\par
+r/funny\par
+\par
+r/memes\par
+\par
+r/showerthoughts\par
+\par
+r/wholesomememes\par
+\par
+Filters obvious junk titles\par
+\par
+Returns list of dicts:\par
+\par
+\{\par
+    "title": str,\par
+    "subreddit": str,\par
+    "score": int\par
+\}\par
+\par
+\par
+No AI yet.\par
+\par
+\f2 2\u-497?\f5\u8419?\f0  Score Viability (Rule-Based, Cheap)\par
+for t in trends:\par
+    t["viability"] = score_trend(t)\par
+\par
+\par
+Adds:\par
+\par
+"viability": "High" | "Medium" | "Low"\par
+\par
+\par
+Still no AI.\par
+\par
+\f2 3\u-497?\f5\u8419?\f0  Filter + Sort\par
+trends = [\par
+    t for t in trends\par
+    if t["viability"] in ["High", "Medium"]\par
+]\par
+\par
+trends.sort(key=lambda t: \{"High": 1, "Medium": 2\}[t["viability"]])\par
+\par
+\par
+Now we have viable candidates only.\par
+\par
+\f2 4\u-497?\f5\u8419?\f0  Apply Subreddit Quotas + Lock TOP_N\par
+TOP_N = 20\par
+\par
+\par
+Quota-balanced selection:\par
+\par
+selected = [...]\par
+\par
+\par
+At this point:\par
+\par
+selected = canonical list of 20 trends\par
+This list feeds everything else.\par
+\par
+Nothing outside selected is allowed to hit AI.\par
+\par
+\f4\u-10179?\u-8923?\f1  \f0 From Here On: AI Only Touches selected\par
+\f2 5\u-497?\f5\u8419?\f0  Tier-2 Commercial Sniff Test (AI)\par
+\par
+File: tier2_sniff.py\par
+\par
+trend["tier2_sniff"] = run_tier2_sniff(trend, client)\par
+\par
+\par
+Returns structured JSON:\par
+\par
+\{\par
+  "sniff_score": int (0-100),\par
+  "verdict": str,\par
+  "confidence": str,\par
+  "explanation": \{\par
+      "why_it_works": str,\par
+      "main_risk": str,\par
+      "who_it_resonates_with": str,\par
+      "why_people_would_buy": str\par
+  \}\par
+\}\par
+\par
+\par
+Only runs on the final 20.\par
+\par
+\f2 6\u-497?\f5\u8419?\f0  AI Enrichment (Design + Merch Angle)\par
+\par
+File: ai_insights.py\par
+\par
+ai_data = enrich_trend_with_ai(trend, prompt)\par
+\par
+\par
+Attaches:\par
+\par
+trend["ai_enrichment"] = \{\par
+    "merch_angle": str,\par
+    "slogan": str,\par
+    "design": list,\par
+    "merch_fit": dict,\par
+    "keywords": list,\par
+    "risks": str,\par
+    "trend_signals": dict\par
+\}\par
+\par
+\f4\u-10179?\u-8980?\f1  \f0 Email Layer\par
+\par
+Before emailing, trends are normalized:\par
+\par
+email_trends = [\par
+    normalize_trend_for_email(t)\par
+    for t in selected\par
+]\par
+\par
+Tier 1 Email\par
+\par
+AI-written summary\par
+\par
+Uses all 20\par
+\par
+No attachment\par
+\par
+generate_tier1_email(...)\par
+send_tier1_email(...)\par
+\par
+Tier 2 Email\par
+\par
+Shows top 4\par
+\par
+Includes sniff score + verdict\par
+\par
+PDF attached\par
+\par
+generate_tier2_email(...)\par
+send_tier2_email(...)\par
+\par
+\f4\u-10179?\u-9020?\f1  \f0 Report Generation\par
+\par
+HTML report built manually\par
+\par
+Saved to /output\par
+\par
+Converted to PDF via wkhtmltopdf\par
+\par
+Attached to Tier 2 email\par
+\par
+JSON archive saved for debugging\par
+\par
+\f4\u-10180?\u-8233?\f1  \f0 Architectural Rules\par
+\par
+Reddit fetch is ingestion only\par
+\par
+Viability scoring is deterministic + cheap\par
+\par
+AI only runs after TOP_N lock\par
+\par
+selected is the canonical source of truth\par
+\par
+Sniff test never runs on more than 20 trends\par
+\par
+Emails + PDF both derive from the same list\par
+\par
+\f4\u-10179?\u-8943?\f1  \f0 Key Files\par
+\par
+main.py \f3\u8594?\f1  \f0 Orchestration, also sends emails in Run()\par
+\par
+trends_reddit.py \f3\u8594?\f1  \f0 Reddit ingestion\par
+\par
+tier2_sniff.py \f3\u8594?\f1  \f0 Commercial viability AI scoring\par
+\par
+ai_insights.py \f3\u8594?\f1  \f0 AI enrichment + email writing\par
+\par
+\f4\u-10180?\u-8273?\f1  \f0 Core Design Principle\par
+\par
+Deterministic filtering first.\par
+Expensive AI last.\par
+Single locked dataset feeds everything.\b0\fs22\lang9\par
+
+\pard\sa200\sl276\slmult1\par
+\par
+}
+ 
