@@ -87,7 +87,7 @@ import subprocess
 import sys
 import os
 
-TEST_UNIT_RUN = False # Change to True to run full unit tests
+TEST_UNIT_RUN = True # Change to True to run full unit tests
 
 if TEST_UNIT_RUN:
     print(" Running preflight checks via runner...")
@@ -1128,7 +1128,7 @@ def run():
     # Create PDF
     import subprocess
     subprocess.run([
-        "wkhtmltopdf",
+        "/usr/local/bin/wkhtmltopdf",
         "--enable-local-file-access",
         html_path,
         pdf_path
