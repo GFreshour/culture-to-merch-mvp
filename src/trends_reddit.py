@@ -84,8 +84,9 @@ def is_valid_trend(title: str) -> bool:
 
 def fetch_subreddit_hot(subreddit, limit=25, max_retries=3):
     HEADERS = {
-        "User-Agent": "CultureToMerchTrendScout/1.0 by u/gary_freshour",
-        "Accept": "application/json"
+        "User-Agent": "python:CultureToMerchTrendScout:1.0 (by /u/gary_freshour)",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
     }
 
     url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit={limit}"
@@ -119,6 +120,7 @@ def get_reddit_trends(client):
     trends = []
 
     for subreddit in SUBREDDITS:
+        time.sleep(1.5)
         posts = fetch_subreddit_hot(subreddit)
 
         for post in posts[:POST_LIMIT]:
