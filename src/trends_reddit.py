@@ -84,12 +84,10 @@ def is_valid_trend(title: str) -> bool:
 
 def fetch_subreddit_hot(subreddit, limit=25, max_retries=3):
     HEADERS = {
-        "User-Agent": "python:CultureToMerchTrendScout:1.0 (by /u/gary_freshour)",
-        "Accept": "application/json",
-        "Content-Type": "application/json"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36"
     }
 
-    url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit={limit}"
+    url = f"https://old.reddit.com/r/{subreddit}/hot.json?limit={limit}"
 
     for attempt in range(1, max_retries+1):
         try:
