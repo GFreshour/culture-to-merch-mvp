@@ -2,7 +2,7 @@
 from flask import Flask, request, jsonify
 import stripe
 import os
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from brevo_client import update_user_tier
 
 app = Flask(__name__)
@@ -26,7 +26,7 @@ def get_customer_email(customer_id):
 
 
 def now_utc():
-    return str(datetime.now(UTC))
+    return str(datetime.now(timezone.utc))
 
 
 # =========================
