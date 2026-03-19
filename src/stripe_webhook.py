@@ -1,4 +1,3 @@
-
 from flask import Flask, request, jsonify
 import stripe
 import os
@@ -13,13 +12,20 @@ app = Flask(__name__)
 endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 stripe.api_key = os.getenv("STRIPE_API_KEY")
 
+print("🚀 Webhook server starting...")
+print(f"🔑 Stripe key loaded: {'Yes' if stripe.api_key else 'No'}")
+print(f"🔐 Webhook secret loaded: {'Yes' if endpoint_secret else 'No'}")
+
 # =========================
 # HELPERS
 # =========================
 def get_customer_email(customer_id):
     try:
+        print(f"🔍 Fetching customer email for ID: {customer_id}")
         customer = stripe.Customer.retrieve(customer_id)
-        return customer.get("email")
+        email = customer.get("email")
+        print(f"📧 Found email: {email}")
+        return email
     except Exception as e:
         print(f"❌ Error retrieving customer: {e}")
         return None
@@ -34,8 +40,12 @@ def now_utc():
 # =========================
 @app.route("/stripe-webhook", methods=["POST"])
 def stripe_webhook():
+    print("\n==================== NEW WEBHOOK ====================")
+
     payload = request.data
     sig_header = request.headers.get('Stripe-Signature')
+
+    print(f"📦 Payload size: {len(payload)} bytes")
 
     try:
         event = stripe.Webhook.construct_event(
@@ -46,7 +56,7 @@ def stripe_webhook():
         return jsonify(success=False), 400
 
     event_type = event['type']
-    print(f"\n📩 EVENT: {event_type}")
+    print(f"📩 EVENT TYPE: {event_type}")
 
     # =========================
     # 1. CHECKOUT COMPLETED (PRIMARY CREATE)
@@ -55,12 +65,18 @@ def stripe_webhook():
         session = event['data']['object']
 
         email = session.get("customer_details", {}).get("email")
-        first_name = session.get("customer_details", {}).get("name", "").split(" ")[0] if session.get("customer_details", {}).get("name") else None
-        last_name = session.get("customer_details", {}).get("name", "").split(" ")[-1] if session.get("customer_details", {}).get("name") else None
+        full_name = session.get("customer_details", {}).get("name")
 
-        print(f"✅ Checkout completed → {email}")
+        first_name = full_name.split(" ")[0] if full_name else None
+        last_name = full_name.split(" ")[-1] if full_name else None
+
+        print(f"✅ Checkout completed")
+        print(f"   📧 Email: {email}")
+        print(f"   👤 Name: {full_name}")
 
         if email:
+            print("📤 Sending to Brevo: Tier 2 / Active")
+
             update_user_tier(
                 email=email,
                 tier="Tier 2",
@@ -72,16 +88,26 @@ def stripe_webhook():
                 sub_status="Active"
             )
 
+            print("✅ Brevo update complete")
+
+        else:
+            print("⚠️ No email found in checkout session")
+
     # =========================
     # 2. INVOICE PAID (RENEWAL)
     # =========================
     elif event_type == 'invoice.paid':
         invoice = event['data']['object']
-        email = get_customer_email(invoice.get("customer"))
+        customer_id = invoice.get("customer")
 
-        print(f"💰 Renewal payment → {email}")
+        print(f"💰 Invoice paid")
+        print(f"   🆔 Customer ID: {customer_id}")
+
+        email = get_customer_email(customer_id)
 
         if email:
+            print(f"📤 Updating renewal for: {email}")
+
             update_user_tier(
                 email=email,
                 tier="Tier 2",
@@ -89,16 +115,26 @@ def stripe_webhook():
                 sub_status="Active"
             )
 
+            print("✅ Brevo renewal update complete")
+
+        else:
+            print("⚠️ No email found for invoice")
+
     # =========================
     # 3. SUBSCRIPTION CANCELLED
     # =========================
     elif event_type == 'customer.subscription.deleted':
         sub = event['data']['object']
-        email = get_customer_email(sub.get("customer"))
+        customer_id = sub.get("customer")
 
-        print(f"⚠️ Subscription cancelled → {email}")
+        print(f"⚠️ Subscription cancelled")
+        print(f"   🆔 Customer ID: {customer_id}")
+
+        email = get_customer_email(customer_id)
 
         if email:
+            print(f"📤 Downgrading user: {email}")
+
             update_user_tier(
                 email=email,
                 tier="Tier 1",
@@ -106,8 +142,15 @@ def stripe_webhook():
                 sub_status="Inactive"
             )
 
+            print("✅ Brevo downgrade complete")
+
+        else:
+            print("⚠️ No email found for cancellation")
+
     else:
-        print("ℹ️ Event ignored")
+        print(f"ℹ️ Event ignored: {event_type}")
+
+    print("==================== END WEBHOOK ====================\n")
 
     return jsonify(success=True)
 
