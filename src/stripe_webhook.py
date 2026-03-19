@@ -32,7 +32,7 @@ def now_utc():
 # =========================
 # WEBHOOK
 # =========================
-@app.route('/webhook', methods=['POST'])
+@app.route("/stripe-webhook", methods=["POST"])
 def stripe_webhook():
     payload = request.data
     sig_header = request.headers.get('Stripe-Signature')
