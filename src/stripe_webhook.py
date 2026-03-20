@@ -47,6 +47,14 @@ def stripe_webhook():
 
     print(f"📦 Payload size: {len(payload)} bytes")
 
+    if not sig_header:
+        print("🚫 Missing Stripe signature header")
+        return jsonify(success=False), 400
+    
+    if len(payload) > 100000:  # ~100KB
+        print("🚫 Payload too large")
+        return jsonify(success=False), 400
+
     try:
         event = stripe.Webhook.construct_event(
             payload, sig_header, endpoint_secret

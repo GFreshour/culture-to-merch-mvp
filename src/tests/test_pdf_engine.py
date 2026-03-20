@@ -1,6 +1,7 @@
 import subprocess
 import tempfile
 
+WKHTMLTOPDF_PATH = "/usr/local/bin/wkhtmltopdf"
 
 def test_pdf_engine():
 
@@ -15,7 +16,7 @@ def test_pdf_engine():
     pdf_path = html_path.replace(".html", ".pdf")
 
     subprocess.run(
-        ["wkhtmltopdf", "--enable-local-file-access", html_path, pdf_path],
+        [WKHTMLTOPDF_PATH, "--enable-local-file-access", html_path, pdf_path],
         check=True
     )
 
