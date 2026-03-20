@@ -1,22 +1,35 @@
 import os
 import subprocess
 
+WKHTMLTOPDF_PATH = "/usr/local/bin/wkhtmltopdf"
+
 
 def test_env():
 
     print("Checking environment variables...")
 
-    if not os.getenv("OPENAI_API_KEY"):
-        raise RuntimeError("OPENAI_API_KEY missing")
+    required_vars = [
+        "OPENAI_API_KEY",
+        "BREVO_API_KEY",
+        "BREVO_LIST_ID",
+        "STRIPE_API_KEY",
+        "STRIPE_WEBHOOK_SECRET"
+    ]
 
-    if not os.getenv("BREVO_API_KEY"):
-        raise RuntimeError("BREVO_API_KEY missing")
+    missing = [var for var in required_vars if not os.getenv(var)]
+
+    if missing:
+        raise RuntimeError(f"Missing environment variables: {', '.join(missing)}")
 
     print("Checking wkhtmltopdf...")
 
     try:
-        subprocess.run(["wkhtmltopdf", "--version"], check=True, capture_output=True)
-    except Exception:
-        raise RuntimeError("wkhtmltopdf not installed or not in PATH")
+        subprocess.run(
+            [WKHTMLTOPDF_PATH, "--version"],
+            check=True,
+            capture_output=True
+        )
+    except Exception as e:
+        raise RuntimeError(f"wkhtmltopdf check failed at {WKHTMLTOPDF_PATH}: {e}")
 
     print(" Environment OK")
