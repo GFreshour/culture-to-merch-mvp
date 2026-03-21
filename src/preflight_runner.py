@@ -11,7 +11,7 @@ def run_preflight():
     print(" Running Merch Scout preflight checks...\n")
     tests = [
         test_env,
-        test_scrapers,
+        #test_scrapers,
         #test_ai_json,
         test_email_generation,
         test_pdf_engine

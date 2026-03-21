@@ -26,7 +26,8 @@ from ai_insights import (
 )
 from utils import normalize_for_pdf, normalize_watchlist_for_pdf, extract_display_signals, normalize_hml
 
-from trends_reddit import get_reddit_trends
+#from trends_reddit import get_reddit_trends
+from trends_reddit_rss import get_reddit_trends_rss
 from trends_x import get_x_trends
 from trends_tiktok import get_tiktok_trends
 
@@ -481,7 +482,8 @@ def run():
     print("☕ Generating Daily Merch Ideas (Semi-AI MVP)…")
 
     print("☕ Fetching trends from Reddit and TikTok…")
-    raw_reddit_trends = get_reddit_trends(client)
+    #raw_reddit_trends = get_reddit_trends(client)
+    raw_reddit_trends = get_reddit_trends_rss()
     trends_tiktok = get_tiktok_trends()
 
     all_raw_trends = raw_reddit_trends + trends_tiktok
