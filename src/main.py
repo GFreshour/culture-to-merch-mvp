@@ -483,8 +483,19 @@ def run():
 
     print("☕ Fetching trends from Reddit and TikTok…")
     #raw_reddit_trends = get_reddit_trends(client)
-    raw_reddit_trends = get_reddit_trends_rss()
-    trends_tiktok = get_tiktok_trends()
+    
+    try:
+        raw_reddit_trends = get_reddit_trends_rss()
+    except Exception as e:
+        print(f"⚠️ Reddit RSS failed completely: {e}")
+        raw_reddit_trends = []
+    
+    try:
+        trends_tiktok = get_tiktok_trends()
+    except Exception as e:
+        print(f"⚠️ TikTok scraper failed completely: {e}")
+        trends_tiktok = []
+    #trends_tiktok = get_tiktok_trends()
 
     all_raw_trends = raw_reddit_trends + trends_tiktok
     

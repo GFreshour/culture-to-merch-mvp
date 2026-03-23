@@ -1,6 +1,7 @@
 import requests
 import re
 import json
+import time
 
 URL = "https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/en"
 HEADERS = {
