@@ -122,7 +122,8 @@ if TEST_ENV:
     FROM_EMAIL = "gary_freshour@hotmail.com"
     TO_EMAILS = [
         "daniellefreshour@gmail.com",
-        "garyfreshour@gmail.com"
+        "garyfreshour@gmail.com",
+        "serafinefreshour@gmail.com"
     ]
 else:
     # Send to Brevo subscribers
