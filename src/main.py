@@ -181,11 +181,27 @@ def score_trend(trend):
     else:
         return "Medium"
 
+def clean_text_for_prompt(text: str) -> str:
+    """
+    Cleans text so it is safe to inject into AI prompts.
+    Prevents JSON-breaking characters.
+    """
+    if not text:
+        return ""
+
+    return (
+        text.replace('"', "'")        # avoid breaking JSON quotes
+            .replace("\n", " ")      # remove line breaks
+            .replace("\r", " ")
+            .strip()
+    )
+
 def build_ai_prompt(trend):
     """
     Builds the AI prompt for Top 5 Deep Strategic Execution enrichment.
     Returns strict JSON to populate the PDF/email.
     """
+    clean_title = clean_text_for_prompt(trend['title'])
 
     return f"""
 You are a senior merch strategist helping sellers create high-converting products.
@@ -193,9 +209,10 @@ You are a senior merch strategist helping sellers create high-converting product
 Analyze this trend for **commercial execution**.
 Do NOT summarize the post.
 Extract the monetizable insight and build actionable strategy.
+Be opinionated, decisive, and realistic about what will sell.
 
 Trend:
-r/{trend['subreddit']} — "{trend['title']}"
+r/{trend['subreddit']} — "{clean_title}"
 
 Return STRICT JSON ONLY with this schema:
 
@@ -241,58 +258,67 @@ Instructions:
    - Must work standalone on a shirt or mug.
 
 1. **core_insight**
-   Explain what makes this trend culturally resonant and why people relate to it.
+   - Explain why this trend resonates culturally.
+   - Identify the human/emotional connection driving interest.
 
 2. **buyer_psychology**
-   What emotional driver causes someone to buy this?
-   (Identity signaling, belonging, nostalgia, irony, etc.)
+   - Identify the emotional trigger for purchase.
+   - Examples: identity signaling, belonging, humor, nostalgia, irony, pride.
 
 3. **target_audience**
    Be specific (age range, subculture, gifting buyer, etc.)
 
 4. **primary_product**
-   ONE product most likely to convert first.
+   - ONE product most likely to convert immediately.
 
 5. **secondary_products**
-   Up to 3 logical product expansions.
+   - Up to 3 logical expansions that complement the primary product.
 
 6. **avoid_products**
-   Products that would likely flop or feel forced.
+   - List products that would flop or feel forced.
 
 7. **design_direction**
-   Layout, typography, illustration style, composition, print placement.
-   Be concrete and visual.
+   - Concrete layout, typography, illustration style, composition, print placement.
+   - Describe visual hierarchy, color choices, and imagery.
 
 8. **niche_variations**
    Instead of random alternates, create 3 monetizable segmented versions.
    Each must include:
      - niche_name (e.g., "Best Friends Version")
      - subtext (optional line under headline)
-     - design_notes (specific styling direction)
+     - design_notes (specific styling & placement)
      - color_palette (specific tones or vibe)
      - target_buyer (who this version is for)
-
-   These should feel like Etsy-ready execution paths.
+    - Avoid generic alternates; each must feel Etsy-ready.
 
 9. **differentiation_strategy**
-   How to avoid being a copycat listing.
-   What makes this version uniquely defensible?
+   - How this version avoids copycats.
+   - Include a unique angle, phrasing, or design feature.
 
 10. **risk_level**
-    Low / Medium / High — with short justification.
+    - Low / Medium / High, with a short commercial justification.
 
 11. **execution_priority**
-    Should this be tested immediately, batch tested, or monitored?
+    - Should this be tested immediately, batch tested, or monitored?
 
 12. **trend_signals**
-    Realistic High / Medium / Low scoring with reasoning.
-    Be honest, not optimistic.
+    - Assign realistic High / Medium / Low scores per category.
+    - Categories:
+      - merch_potential
+      - hashtag_growth
+      - memetic_variations
+      - cross_platform_spread
+      - search_volume_mentions
+      - merch_branding
+    - Provide rationale for each score.
+    - Give real examples if relevant.
+    - Avoid all Medium scores; be decisive.
 
-Be commercially sharp.
-Be specific.
-Avoid vague phrases.
-Return JSON only.
-Do not include commentary.
+Additional guidance:
+- Be commercially sharp, tactical, and specific.
+- Avoid vague, generic phrases or filler.
+- If the trend is weak, state it clearly.
+- Return JSON only — no commentary, no extra text.
 """.strip()
 
 # ---------------- PROMPT (Watchlist / Rapid Tier 2 Enrichment) ----------------
@@ -301,11 +327,12 @@ def build_watchlist_prompt(trend):
     Builds the AI prompt for Watchlist / rapid Tier 2 enrichment.
     Returns strict JSON but with lighter detail than Top 5.
     """
+    clean_title = clean_text_for_prompt(trend['title'])
     return f"""
 You are a merch analyst providing a quick evaluation of a trend for potential print-on-demand products.
 
 Trend:
-r/{trend['subreddit']} — "{trend['title']}"
+r/{trend['subreddit']} — "{clean_title}"
 
 Return STRICT JSON ONLY, using this schema:
 
@@ -330,17 +357,46 @@ Return STRICT JSON ONLY, using this schema:
 }}
 
 Instructions:
-1. **merch_headline** — Short punchy primary slogan (3–7 words), compress Reddit title into a sellable hook.
-2. **core_insight** — Brief explanation of why this trend resonates.
-3. **primary_product** — One main merch product to prioritize.
-4. **secondary_products** — Up to 2 additional products.
-5. **design_suggestion** — Short style/layout/colors/fonts advice (2–3 sentences max).
-6. **angle_variations** — 2 alternate merch angles or slogans.
-7. **risk_level** — Low / Medium / High commercial risk and why.
-8. **trend_signals** — Realistic assessment of trend viability with short justification.
 
-Keep it concise, actionable, and commercially realistic.
-Return JSON only, no extra commentary.
+1. **merch_headline**
+   - Create ONE short, punchy slogan (3–7 words max).
+   - Compress the Reddit title into a sellable hook.
+   - Must work on a shirt, mug, or sticker.
+
+2. **core_insight**
+   - Briefly explain why this trend resonates.
+   - Identify the human or emotional connection that drives interest.
+
+3. **primary_product**
+   - ONE product most likely to convert quickly.
+
+4. **secondary_products**
+   - Up to 2 logical complementary products.
+
+5. **design_suggestion**
+   - Short, actionable style/layout advice (2–3 sentences max).
+   - Include colors, fonts, and imagery if relevant.
+
+6. **angle_variations**
+   - Provide 2 alternate slogans, angles, or spin-offs for merch.
+   - Should feel distinct and monetizable.
+
+7. **risk_level**
+   - Low / Medium / High commercial risk, with a short justification.
+   - Be realistic; don’t sugarcoat weak trends.
+
+8. **trend_signals**
+   - Assign realistic High / Medium / Low scores per category:
+     - merch_potential, hashtag_growth, memetic_variations,
+       cross_platform_spread, search_volume_mentions, merch_branding
+   - Provide concise rationale for each score.
+   - Include examples if applicable.
+   - Avoid generic “all Medium” scores; be decisive.
+
+Additional guidance:
+- Keep it concise, tactical, and commercially actionable.
+- Avoid vague phrases or filler.
+- Return JSON only — no commentary or extra text.
 """.strip()
 
 
