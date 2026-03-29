@@ -214,6 +214,9 @@ Be opinionated, decisive, and realistic about what will sell.
 Trend:
 r/{trend['subreddit']} — "{clean_title}"
 
+Evaluate commercial potential based not only on current momentum, but also on niche variations, viral meme potential, and likely buyer engagement if executed well. Assign High, Medium, or Low honestly, considering realistic monetization opportunities, even if the trend isn’t yet widely saturated.
+Consider how the trend would perform across multiple merch products and micro-niches, not just the main product idea.
+
 Return STRICT JSON ONLY with this schema:
 
 {{
