@@ -699,20 +699,17 @@ def run():
     def weighted_score(t):
         sniff = t.get("tier2_sniff") or {}
 
-        commercial = sniff.get("commercial_score", 0)
-        signal = t.get("signal", 50)
+        commercial = t.get("commercial_score", 0)
+
+        confidence = t.get("confidence_level", 0)
 
         audience_map = {"high": 100, "medium": 60, "low": 30}
-        buzz_map = {"High": 100, "Medium": 60, "Low": 30}
-
         audience = audience_map.get(sniff.get("audience_size"), 60)
-        buzz = buzz_map.get(t.get("buzz"), 60)
 
         return (
-            commercial * 0.4 +
-            signal * 0.3 +
-            audience * 0.2 +
-            buzz * 0.1
+            commercial * 0.6 +     # stronger weight
+            confidence * 0.3 +     # NEW: confidence matters
+            audience * 0.1         # keep light
         )
 
     trends.sort(key=weighted_score, reverse=True)

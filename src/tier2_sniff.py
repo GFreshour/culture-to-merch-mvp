@@ -11,10 +11,21 @@ def run_tier2_sniff(trend, client):
     """
 
     prompt = f"""
-You are evaluating a cultural trend for print-on-demand merch viability.
+You are a senior merch strategist.
+
+Your job is to quickly evaluate whether a trend is worth selling as print-on-demand merchandise.
+
+Be decisive. Avoid safe or neutral answers.
 
 Trend title:
 "{trend.get('title')}"
+
+IMPORTANT:
+- Do NOT default to medium scores
+- Most trends should NOT score be Medium
+- Only assign high scores if it is clearly sellable at scale
+- Prioritize buyer intent over creativity
+- This is used for filtering the top 5 most sellable products
 
 Return STRICT JSON only, like this example:
 
