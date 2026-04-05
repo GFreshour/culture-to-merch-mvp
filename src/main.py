@@ -240,7 +240,10 @@ def build_ai_prompt(trend):
     Returns strict JSON to populate the PDF/email.
     """
     clean_title = clean_text_for_prompt(trend['title'])
-
+    
+    # Optional: include source if you want context
+    source = trend.get('source', 'unknown').capitalize()
+    
     return f"""
 You are a senior merch strategist helping sellers create high-converting products.
 
@@ -249,8 +252,8 @@ Do NOT summarize the post.
 Extract the monetizable insight and build actionable strategy.
 Be opinionated, decisive, and realistic about what will sell.
 
-Trend:
-r/{trend['subreddit']} — "{clean_title}"
+Trend ({source}):
+"{clean_title}"
 
 Evaluate commercial potential based not only on current momentum, but also on niche variations, viral meme potential, and likely buyer engagement if executed well. Assign High, Medium, or Low honestly, considering realistic monetization opportunities, even if the trend isn’t yet widely saturated.
 Consider how the trend would perform across multiple merch products and micro-niches, not just the main product idea.
@@ -369,11 +372,14 @@ def build_watchlist_prompt(trend):
     Returns strict JSON but with lighter detail than Top 5.
     """
     clean_title = clean_text_for_prompt(trend['title'])
+
+    source = trend.get('source', 'unknown').capitalize()
+
     return f"""
 You are a merch analyst providing a quick evaluation of a trend for potential print-on-demand products.
 
-Trend:
-r/{trend['subreddit']} — "{clean_title}"
+Trend ({source}):
+"{clean_title}"
 
 Return STRICT JSON ONLY, using this schema:
 
