@@ -164,23 +164,60 @@ SUBREDDIT_QUOTAS = {
 # ---------------- SCORING ----------------
 
 def score_trend(trend):
-    title = trend["title"].lower()
-    subreddit = trend["subreddit"].lower()
+    title = trend.get("title", "").lower()
+    subreddit = trend.get("subreddit", "").lower()
+    source = trend.get("source", "reddit")
 
+    # -------------------------
+    # 🚫 Hard Disqualifiers
+    # -------------------------
     disqualifiers = ["politic", "shooting", "murder", "death", "trump", "biden"]
     if any(w in title for w in disqualifiers):
         return "Low"
 
-    good_subs = ["funny", "memes", "showerthoughts", "showthoughts", "dadjokes"]
-    if subreddit not in good_subs:
-        return "Medium"
-
-    if len(title) > 100:
-        return "Low"
-    elif len(title) < 60:
-        return "High"
+    # -------------------------
+    # 📊 Source Weighting
+    # -------------------------
+    if source == "substack":
+        source_weight = 1.25  # 🔥 higher quality signal
     else:
+        source_weight = 1.0
+
+    # -------------------------
+    # 🧠 Subreddit Quality (Reddit only)
+    # -------------------------
+    good_subs = ["funny", "memes", "showerthoughts", "dadjokes"]
+
+    if source == "reddit":
+        if subreddit not in good_subs:
+            base_score = 0.5  # Medium baseline
+        else:
+            base_score = 1.0  # Strong baseline
+    else:
+        # Substack doesn't use subreddit logic
+        base_score = 1.0
+
+    # -------------------------
+    # ✍️ Title Quality Heuristic
+    # -------------------------
+    title_len = len(title)
+
+    if title_len > 100:
+        base_score *= 0.6
+    elif title_len < 60:
+        base_score *= 1.2
+
+    # -------------------------
+    # 🧮 Final Score → Tier
+    # -------------------------
+    final_score = base_score * source_weight
+
+    if final_score >= 1.2:
+        return "High"
+    elif final_score >= 0.8:
         return "Medium"
+    else:
+        return "Low"
 
 def clean_text_for_prompt(text: str) -> str:
     """
