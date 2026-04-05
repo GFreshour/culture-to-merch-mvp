@@ -555,9 +555,12 @@ def run():
     except Exception as e:
         print(f"⚠️ TikTok scraper failed completely: {e}")
         trends_tiktok = []
-    #trends_tiktok = get_tiktok_trends()
-
-    all_raw_trends = raw_reddit_trends + trends_tiktok
+    
+    #Get substrack trends
+    substack_trends = get_substack_trends(client)
+    print(f"📊 Substack trends fetched: {len(substack_trends)}")
+    
+    all_raw_trends = raw_reddit_trends + trends_tiktok + substack_trends
     
     #raw_x_trends = get_x_trends(client)
 
