@@ -30,6 +30,7 @@ from utils import normalize_for_pdf, normalize_watchlist_for_pdf, extract_displa
 from trends_reddit_rss import get_reddit_trends_rss
 from trends_x import get_x_trends
 from trends_tiktok import get_tiktok_trends
+from trends_substack import get_substack_trends
 
 from tier0_product_gate import run_productability_gate
 
@@ -559,7 +560,7 @@ def run():
     #Get substrack trends
     substack_trends = get_substack_trends(client)
     print(f"📊 Substack trends fetched: {len(substack_trends)}")
-    
+
     all_raw_trends = raw_reddit_trends + trends_tiktok + substack_trends
     
     #raw_x_trends = get_x_trends(client)
