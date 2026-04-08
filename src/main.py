@@ -359,9 +359,15 @@ Instructions:
     - Avoid all Medium scores; be decisive.
 
 Additional guidance:
+- These trends have already passed strong commercial filters and are considered high-potential candidates.
+- Your job is NOT to validate them, but to differentiate them.
+- Be decisive in ranking signals — some should clearly be stronger than others.
+- Avoid neutral or safe scoring.
+- You are comparing this trend against other high-potential trends. Not all can be winners — some must be clearly stronger or weaker.
 - Be commercially sharp, tactical, and specific.
 - Avoid vague, generic phrases or filler.
 - If the trend is weak, state it clearly.
+- If everything is Medium, you are wrong.
 - Return JSON only — no commentary, no extra text.
 """.strip()
 
