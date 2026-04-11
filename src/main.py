@@ -476,9 +476,18 @@ def enrich_top5_with_ai(trend):
     # 🔥 STRIP CODE FENCES IF PRESENT
     if raw_text.startswith("```"):
         raw_text = raw_text.replace("```json", "").replace("```", "").strip()
-    
+    import re
+
+    def safe_json_load(raw_text):
+        try:
+            return json.loads(raw_text)
+        except:
+            # Remove trailing commas before } or ]
+            cleaned = re.sub(r",\s*([}\]])", r"\1", raw_text)
+            return json.loads(cleaned)
+            
     try:
-        parsed = json.loads(raw_text)
+        parsed = safe_json_load(raw_text)
         return parsed
     except json.JSONDecodeError:
         print("⚠️ Top5 AI response invalid JSON")

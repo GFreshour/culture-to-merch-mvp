@@ -78,11 +78,31 @@ def is_valid_trend(title: str) -> bool:
 
     return True
 
+import requests
+
+def fetch_subreddit_json(subreddit):
+    url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit=25"
+    headers = {"User-Agent": "Mozilla/5.0"}
+
+    try:
+        res = requests.get(url, headers=headers, timeout=10)
+        data = res.json()
+
+        posts = []
+
+        for post in data.get("data", {}).get("children", []):
+            posts.append({
+                "title": post["data"].get("title", ""),
+                "score": post["data"].get("score", 0)
+            })
+
+        return posts
+
+    except Exception as e:
+        print(f"❌ JSON fallback failed for r/{subreddit}: {e}")
+        return []
 
 def fetch_subreddit_rss(subreddit, max_retries=3):
-    """
-    Fetch subreddit via RSS instead of JSON scraping
-    """
     url = f"https://www.reddit.com/r/{subreddit}/.rss"
 
     for attempt in range(1, max_retries + 1):
@@ -100,8 +120,9 @@ def fetch_subreddit_rss(subreddit, max_retries=3):
             print(f"⚠️ RSS fetch failed for r/{subreddit} (attempt {attempt}): {e}")
             time.sleep(2 * attempt)
 
-    print(f"⚠️ RSS ultimately failed for r/{subreddit}")
-    return []
+    # 🔥 FALLBACK TO JSON
+    print(f"🔁 Falling back to JSON for r/{subreddit}")
+    return fetch_subreddit_json(subreddit)
 
 
 def get_reddit_trends_rss(client=None):
@@ -118,7 +139,12 @@ def get_reddit_trends_rss(client=None):
         entries = fetch_subreddit_rss(subreddit)
 
         for entry in entries[:POST_LIMIT]:
-            title = entry.get("title", "").strip()
+            if isinstance(entry, dict):
+                title = entry.get("title", "").strip()
+                score = entry.get("score", 0)
+            else:
+                title = entry.get("title", "").strip()
+                score = 0
 
             if not title:
                 continue
@@ -130,7 +156,7 @@ def get_reddit_trends_rss(client=None):
             trend = {
                 "title": title,
                 "subreddit": subreddit,
-                "score": 0  # RSS doesn't give score — your pipeline doesn't rely on it anyway
+                "score": score
             }
 
             trends.append(trend)
