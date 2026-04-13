@@ -31,6 +31,8 @@ from trends_reddit_rss import get_reddit_trends_rss
 from trends_x import get_x_trends
 from trends_tiktok import get_tiktok_trends
 from trends_substack import get_substack_trends
+from trends_google import get_daily_trends
+from ai_trend_expander import expand_trends_with_ai
 
 from tier0_product_gate import run_productability_gate
 
@@ -485,7 +487,7 @@ def enrich_top5_with_ai(trend):
             # Remove trailing commas before } or ]
             cleaned = re.sub(r",\s*([}\]])", r"\1", raw_text)
             return json.loads(cleaned)
-            
+
     try:
         parsed = safe_json_load(raw_text)
         return parsed
@@ -619,7 +621,14 @@ def run():
     substack_trends = get_substack_trends(client)
     print(f"📊 Substack trends fetched: {len(substack_trends)}")
 
-    all_raw_trends = raw_reddit_trends + trends_tiktok + substack_trends
+    try:
+        google_trends = get_daily_trends()
+    except Exception as e:
+        print(f"⚠️ Google rss feed scraper failed completely: {e}")
+        google_trends = []
+    
+
+    all_raw_trends = raw_reddit_trends + trends_tiktok + substack_trends + google_trends
     
     #raw_x_trends = get_x_trends(client)
 
@@ -649,7 +658,28 @@ def run():
 
     print(f"✅ {len(gate_passed_trends)} trends passed Gate 0")
 
-    # Use gate_passed_trends instead of old Reddit-only list
+    # ----------------------------
+    # 🤖 AI Expansion (ONLY IF LOW VOLUME)
+    # ----------------------------
+    MIN_TRENDS_AFTER_GATE0 = 20
+
+    if len(gate_passed_trends) < MIN_TRENDS_AFTER_GATE0:
+        print(f"⚠️ Only {len(gate_passed_trends)} trends after Gate 0 — expanding with AI...")
+
+        ai_trends = expand_trends_with_ai(client, gate_passed_trends)
+
+        # Run Gate 0 on AI-generated trends too
+        ai_trends_filtered = []
+        for trend in ai_trends:
+            gated = run_productability_gate(trend, client)
+            if gated:
+                ai_trends_filtered.append(gated)
+
+        gate_passed_trends.extend(ai_trends_filtered)
+
+        print(f"📊 After AI expansion: {len(gate_passed_trends)} trends")
+
+    # Use gate_passed_trends going forward
     trends = gate_passed_trends
 
     if not trends:
