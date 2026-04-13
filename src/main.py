@@ -700,6 +700,15 @@ def run():
         if t.get("viability") in ["High", "Medium"]
     ]
 
+    before_filter = len(trends)
+
+    trends = [
+        t for t in trends
+        if t.get("viability") in ["High", "Medium"]
+    ]
+
+    print(f"📉 Removed {before_filter - len(trends)} trends during viability filter")
+
     # ----------------------------
     # 3 Sort by viability
     # ----------------------------

@@ -20,7 +20,18 @@ We currently have a small set of early signals:
 
 {base_trends}
 
-Generate NEW trend-style phrases that could realistically emerge from these.
+Generate SPECIFIC, concrete trend phrases (not generic inspiration).
+
+GOOD examples:
+- "Corporate burnout humor"
+- "AI replacing networking"
+- "Festival outfit identity"
+- "Investing like a beginner again"
+
+BAD examples:
+- "Chase your dreams"
+- "Be yourself"
+- "Stay motivated"
 
 RULES:
 - Return ONLY a JSON array
