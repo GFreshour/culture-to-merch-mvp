@@ -31,29 +31,24 @@ design execution, timing, and platform strategy.
 The messaging should gently remind readers that the tool helps them discover
 ideas faster, but they still bring the creativity.
 
-1. INTRO
-- 1 to 2 sentences
-- energetic, smart, friendly
-- makes reader excited to browse today's ideas
+TASK:
+1. Write a friendly, playful INTRO (1–2 sentences).
+2. Write a warm, encouraging OUTRO (2–3 sentences), including:
+    - Outro should subtly upsell Tier 2 (Builder edition) without being pushy
+    - Outro should include a reminder to check trademarks
+    - Outro should include a light, subtle conclusion to the email
 
-2. OUTRO
-- 1 to 2 sentences
-- warm signoff
-- remind users creativity + execution matter
-- mention trademarks lightly
-- no selling
-- no mention of paid tier
-
-Style:
-- Human
-- Slightly witty
-- Helpful
-- No corporate fluff
-
-Email should be:
+Tier 1 email should be:
 - Friendly, playful, slightly witty
 - Casual, human, not corporate
-- Light emoji usage (max 2)
+- Light emoji usage (max 1)
+
+Tier 2 (Builder edition) includes:
+- Trend signls
+- Buyer psychology
+- Design direction
+- Target audience
+- Niche variations
 
 Return valid JSON only:
 {{
@@ -201,8 +196,6 @@ def generate_tier1_email(date_str, trends, max_trends=4, watchlist=None, total_r
         #slogan = trend.get("slogan", "—")
         merch_angle = trend.get("core_insight", "")
         products = trend.get("secondary_products", [])
-        design = trend.get("design_direction","No designs found")
-        priority = trend.get("execution_priority","")
 
         #merch_html = "<br>".join(f"• {html.escape(item)}" for item in merch_ideas) if merch_ideas else "• Mug<br>• T-shirt"
 
@@ -222,6 +215,9 @@ def generate_tier1_email(date_str, trends, max_trends=4, watchlist=None, total_r
                     <p style="margin: 0 0 10px 0; font-size: 18px; font-weight: bold; color: #111;">
                         {html.escape(title)}
                     </p>
+                    <p style="margin: 0 0 10px 0; font-size: 13px; color: #666;">
+                        {html.escape(opportunity)}
+                    </p>
                     <p style="margin: 0 0 12px 0; font-size: 14px;">
                         <strong>Why it works</strong><br>
                         {html.escape(merch_angle)}
@@ -229,14 +225,6 @@ def generate_tier1_email(date_str, trends, max_trends=4, watchlist=None, total_r
                     <p style="margin: 0; font-size: 14px;">
                         <strong>Best merch fit</strong><br>
                         {merch_html}
-                    </p>
-                    <p style="margin: 0 0 12px 0; font-size: 14px;">
-                        <strong>Quick design idea</strong><br>
-                        {html.escape(design)}
-                    </p>
-                    <p style="margin: 0 0 12px 0; font-size: 14px;">
-                        <strong>Priority</strong><br>
-                        {html.escape(priority)}
                     </p>
                 </td>
             </tr>
@@ -251,40 +239,9 @@ def generate_tier1_email(date_str, trends, max_trends=4, watchlist=None, total_r
         </table>
         """)
 
-    # ---- PRO CTA BLOCK ----
-    remaining = total_trends_qualified - max_trends
-
-    html_parts.append(f"""
-    <table width="100%" cellpadding="0" cellspacing="0"
-    style="margin: 32px 0; background:#f8f8f8; border:1px solid #e5e5e5; border-radius:8px;">
-    <tr>
-    <td style="padding:20px; font-family:Arial,sans-serif;">
-
-    <p style="margin:0 0 10px 0; font-size:18px; font-weight:bold;">
-    👀 What Pro Members See Today
-    </p>
-
-    <p style="margin:0 0 10px 0; font-size:14px; line-height:1.5;">
-    + {remaining} additional filtered merch opportunities<br>
-    + Buyer psychology insights<br>
-    + Niche variations<br>
-    + Trend signals & timing data<br>
-    + Daily PDF playbook
-    </p>
-
-    <p style="margin:0; font-size:14px;">
-    Upgrade to <strong>Merch Scout Builder</strong> and skip the guesswork.
-    </p>
-
-    </td>
-    </tr>
-    </table>
-    """)
-
-    # ---- AI OUTRO ----
+    # ---- OUTRO ----
     html_parts.append(f"<p>{outro}</p>")
-
-    html_parts.append("""
+    html_parts.append(f"""
     <p>☕ Until next time,<br>
     <strong>Daily Merch Scout</strong></p>
     """)
