@@ -252,7 +252,7 @@ def generate_tier1_email(date_str, trends, max_trends=4, watchlist=None, total_r
         """)
 
     # ---- PRO CTA BLOCK ----
-    remaining = total_trends_qualified - max_trends
+    remaining = max(0, (total_trends_qualified or len(trends)) - max_trends)
 
     html_parts.append(f"""
     <table width="100%" cellpadding="0" cellspacing="0"
