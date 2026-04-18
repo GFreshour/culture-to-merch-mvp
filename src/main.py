@@ -126,6 +126,7 @@ if TEST_ENV:
     TO_EMAILS = [
         "daniellefreshour@gmail.com",
         "garyfreshour@gmail.com",
+        "omfbusiness@gmail.com",
         "serafinefreshour@gmail.com"
     ]
 else:

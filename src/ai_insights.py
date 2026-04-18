@@ -209,7 +209,7 @@ def generate_tier1_email(date_str, trends, max_trends=4, watchlist=None, total_r
         merch_html = "<br>".join(
             f"• {html.escape(p)}" for p in products[:2]
         ) if products else "• T-shirt<br>• Mug"
-        opportunity = tier1_opportunity_line(trend)
+        #opportunity = tier1_opportunity_line(trend)
 
         html_parts.append(f"""
             <table width="100%" cellpadding="0" cellspacing="0"
@@ -226,10 +226,6 @@ def generate_tier1_email(date_str, trends, max_trends=4, watchlist=None, total_r
                         <strong>Why it works</strong><br>
                         {html.escape(merch_angle)}
                     </p>
-                    <p style="margin: 0; font-size: 14px;">
-                        <strong>Best merch fit</strong><br>
-                        {merch_html}
-                    </p>
                     <p style="margin: 0 0 12px 0; font-size: 14px;">
                         <strong>Quick design idea</strong><br>
                         {html.escape(design)}
@@ -238,17 +234,13 @@ def generate_tier1_email(date_str, trends, max_trends=4, watchlist=None, total_r
                         <strong>Priority</strong><br>
                         {html.escape(priority)}
                     </p>
+                    <p style="margin: 0; font-size: 14px;">
+                        <strong>Best merch fit</strong><br>
+                        {merch_html}
+                    </p>
                 </td>
             </tr>
             </table>
-        """)
-
-    # ---- WATCHLIST MENTION ----
-    if watchlist:
-        html_parts.append(f"""
-        <table width="100%" cellpadding="0" cellspacing="0"
-            style="margin: 28px 0; border-top: 2px dashed #e5e5e5;">
-        </table>
         """)
 
     # ---- PRO CTA BLOCK ----
