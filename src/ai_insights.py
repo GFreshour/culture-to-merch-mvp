@@ -285,88 +285,177 @@ def generate_tier1_email(date_str, trends, max_trends=4, watchlist=None, total_r
 
 def generate_tier2_email(date_str, trends, watchlist=None, total_raw_trends=None, total_trends_qualified=None):
     """
-    Generates the Tier 2 Merch Scout email using normalized trend data.
+    Generates the Tier 2 Merch Scout Builder Edition email.
+    Cleaner premium layout + top deep dive + watchlist + PDF reminder.
     """
 
-    from utils import normalize_for_pdf, normalize_watchlist_for_pdf, extract_display_signals
+    from utils import normalize_for_pdf, normalize_watchlist_for_pdf
 
     normalized_trends = [normalize_for_pdf(t) for t in trends]
 
     intro, outro = generate_tier2_intro_outro(normalized_trends, date_str)
 
+    total_raw = total_raw_trends or len(trends)
+    total_qualified = total_trends_qualified or len(trends)
+
     html = f"""
     <html>
-    <body style="font-family: Arial, sans-serif; line-height:1.5; color: #222;">
+    <body style="font-family: Arial, sans-serif; line-height:1.55; color:#222; max-width:700px; margin:auto;">
 
     <p>{intro}</p>
 
     <p><b>📊 Today’s scan:</b><br>
-    {total_raw_trends} culture trends analyzed<br>
-    {total_trends_qualified} trends qualified for execution</p>
+    {total_raw} culture trends analyzed<br>
+    {total_qualified} trends qualified for merch potential</p>
+
+    <hr style="margin:24px 0;">
     """
 
-    # -----------------------------
-    # TOP TRENDS
-    # -----------------------------
-    for idx, trend in enumerate(normalized_trends, 1):
-        signals_display = extract_display_signals(trend)
-        snapshot_html = "<ul style='margin: 0 0 12px 16px; padding: 0; font-size: 14px;'>"
-        for key, value in signals_display.items():
-            snapshot_html += f"<li><strong>{key}:</strong> {value}</li>"
-        snapshot_html += "</ul>"
+    # ==================================================
+    # TOP TREND (Deep Dive)
+    # ==================================================
+    if normalized_trends:
 
-        title = trend.get("merch_headline", "")
-        insight = trend.get("core_insight", "")
-        products = trend.get("secondary_products", [])[:3]
-        product_list = "".join([f"<li>{p}</li>" for p in products])
+        top = normalized_trends[0]
+
+        title = top.get("merch_headline", "Untitled Trend")
+        insight = top.get("core_insight", "")
+        buyer = top.get("buyer_psychology", "")
+        design = top.get("design_direction", "")
+        risk = top.get("risk_level", "")
+        priority = top.get("execution_priority", "")
+        products = top.get("secondary_products", [])[:4]
+
+        niche_variations = top.get("niche_variations", [])
+
+        product_html = "".join([f"<li>{p}</li>" for p in products])
 
         html += f"""
-        <div style="border-bottom:1px solid #ddd; margin-bottom:16px; padding-bottom:12px;">
-            <h3>🔥 Trend #{idx}: {title}</h3>
+        <h2 style="margin-bottom:8px;">🚀 Priority Launch Today</h2>
 
-            <p><b>Core Insight</b><br>{insight}</p>
+        <div style="border:1px solid #ddd; padding:18px; margin-bottom:28px; border-radius:8px;">
 
-            <p><b>Best Merch Fit</b></p>
-            <ul>{product_list}</ul>
+        <h3 style="margin-top:0;">1. {title}</h3>
 
-            <p><b>Signal Snapshot</b></p>
-            {snapshot_html}
-        </div>
+        <p><b>Risk Level:</b> {risk}<br>
+        <b>Execution Priority:</b> {priority}</p>
+
+        <p><b>Why It Sells</b><br>{insight}</p>
+
+        <p><b>Buyer Psychology</b><br>{buyer}</p>
+
+        <p><b>Best Products</b></p>
+        <ul>{product_html}</ul>
+
+        <p><b>Design Direction</b><br>{design}</p>
         """
 
-    # -----------------------------
-    # WATCHLIST
-    # -----------------------------
-    if watchlist:
-        html += f"<h3>👀 Watchlist Signals ({len(watchlist)})</h3>"
-        for idx, w_trend in enumerate(watchlist, 1):
-            w = normalize_watchlist_for_pdf(w_trend)
-            title = w.get("merch_headline", "")
-            insight = w.get("core_insight", "")
-            products = w.get("secondary_products", [])[:2]
-            product_list = "".join([f"<li>{p}</li>" for p in products])
+        if niche_variations:
+            html += "<p><b>Niche Variations</b></p>"
+
+            for nv in niche_variations[:3]:
+                niche_name = nv.get("niche_name", "")
+                subtext = nv.get("subtext", "")
+                html += f"""
+                <p style="margin:0 0 10px 0;">
+                <b>{niche_name}</b><br>
+                {subtext}
+                </p>
+                """
+
+        diff = top.get("differentiation_strategy", "")
+        if diff:
+            html += f"""
+            <p><b>Differentiation Strategy</b><br>{diff}</p>
+            """
+
+        html += "</div>"
+
+    # ==================================================
+    # TRENDS 2 + 3 (Lighter Detail)
+    # ==================================================
+    if len(normalized_trends) > 1:
+
+        html += "<h2 style='margin-bottom:12px;'>🔥 Other Strong Opportunities</h2>"
+
+        for idx, trend in enumerate(normalized_trends[1:3], start=2):
+
+            title = trend.get("merch_headline", "")
+            insight = trend.get("core_insight", "")
+            design = trend.get("design_direction", "")
+            risk = trend.get("risk_level", "")
+            priority = trend.get("execution_priority", "")
+            products = trend.get("secondary_products", [])[:3]
+
+            product_html = "".join([f"<li>{p}</li>" for p in products])
 
             html += f"""
-            <div style="border-left:4px solid #f0c040; padding-left:8px; margin-bottom:12px;">
-                <h4>👀 Watchlist #{idx}: {title}</h4>
-                <p>{insight}</p>
+            <div style="border-top:1px solid #eee; padding-top:16px; margin-bottom:20px;">
+
+            <h3>{idx}. {title}</h3>
+
+            <p><b>Why It Sells</b><br>{insight}</p>
+
+            <p><b>Risk Level:</b> {risk}<br>
+            <b>Execution Priority:</b> {priority}</p>
+
+            <p><b>Best Products</b></p>
+            <ul>{product_html}</ul>
+
+            <p><b>Design Direction</b><br>{design}</p>
+
+            </div>
             """
-            if products:
-                html += f"""
-                <p><b>Potential Merch Fit</b></p>
-                <ul>{product_list}</ul>
-                """
-            html += "</div>"
 
-    # -----------------------------
-    # SUMMARY & OUTRO
-    # -----------------------------
+    # ==================================================
+    # WATCHLIST
+    # ==================================================
+    if watchlist:
+
+        html += """
+        <hr style="margin:28px 0;">
+        <h2>👀 Watch List</h2>
+        <ul style="padding-left:20px;">
+        """
+
+        for item in watchlist:
+            w = normalize_watchlist_for_pdf(item)
+            title = w.get("merch_headline", "Untitled")
+            html += f"<li style='margin-bottom:8px;'>{title}</li>"
+
+        html += "</ul>"
+
+    # ==================================================
+    # PDF BLOCK
+    # ==================================================
+    html += """
+    <div style="background:#f8f8f8; border:1px solid #e5e5e5; padding:18px; margin:30px 0; border-radius:8px;">
+
+    <p style="margin-top:0;"><b>📎 Today’s Builder PDF Included</b></p>
+
+    <p style="margin-bottom:0;">
+    ✅ Top 5 expanded opportunities<br>
+    ✅ Buyer psychology insights<br>
+    ✅ Niche variations<br>
+    ✅ Product recommendations<br>
+    ✅ Design direction ideas<br>
+    ✅ Additional watch list signals
+    </p>
+
+    </div>
+    """
+
+    # ==================================================
+    # OUTRO
+    # ==================================================
     html += f"""
-    <hr style='margin:24px 0;'>
-
     <p>{outro}</p>
 
-    <p style="margin-top:24px; font-style:italic; color:#555;">☕ Cheers,<br>Daily Merch Scout</p>
+    <p style="margin-top:28px; font-style:italic; color:#555;">
+    ☕ Until next time,<br>
+    <strong>Daily Merch Scout — Builder Edition</strong>
+    </p>
+
     </body>
     </html>
     """
