@@ -112,7 +112,6 @@ Tier 2 email should be:
 - Give 1–2 sentences outro
 - Outro should include a reminder to check trademarks
 - Outro should include a light, subtle conclusion to the email
-- Outro should include a reminder that the attached Merch Brief includes things like: trend signls, buyer psychology, target audience, design direction, and niche variations
 - Do NOT mention Tier 3 or upsell
 
 Return valid JSON only:
@@ -283,7 +282,14 @@ def generate_tier1_email(date_str, trends, max_trends=4, watchlist=None, total_r
 
     return "\n".join(html_parts)
 
-def generate_tier2_email(date_str, trends, watchlist=None, total_raw_trends=None, total_trends_qualified=None):
+def generate_tier2_email(
+    date_str,
+    trends,
+    watchlist=None,
+    watchlist_total=None,
+    total_raw_trends=None,
+    total_trends_qualified=None
+):
     """
     Generates the Tier 2 Merch Scout Builder Edition email.
     Cleaner premium layout + top deep dive + watchlist + PDF reminder.
@@ -412,9 +418,13 @@ def generate_tier2_email(date_str, trends, watchlist=None, total_raw_trends=None
     # ==================================================
     if watchlist:
 
+        shown_watch = len(watchlist)
+        total_watch = watchlist_total or shown_watch
+        remaining_watch = max(0, total_watch - shown_watch)
+
         html += """
         <hr style="margin:28px 0;">
-        <h2>👀 Watch List</h2>
+        <h2>👀 Top Watch List Signals</h2>
         <ul style="padding-left:20px;">
         """
 
@@ -424,6 +434,13 @@ def generate_tier2_email(date_str, trends, watchlist=None, total_raw_trends=None
             html += f"<li style='margin-bottom:8px;'>{title}</li>"
 
         html += "</ul>"
+
+        if remaining_watch > 0:
+            html += f"""
+            <p style="font-size:14px; color:#555; margin-top:10px;">
+            + {remaining_watch} more emerging watch list opportunities inside today’s Builder PDF.
+            </p>
+            """
 
     # ==================================================
     # PDF BLOCK

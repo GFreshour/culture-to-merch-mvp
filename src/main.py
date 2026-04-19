@@ -962,13 +962,16 @@ def run():
         total_trends_qualified=num_trends_qualified
     )
 
+    MAX_WATCHLIST_EMAIL = 8
+
     print("📬 Sending Tier 2 email (with attachment)…")
     tier2_email_body = generate_tier2_email(
         date_str=today,
         trends=top5[:3],
-        watchlist=watchlist[:2],
+        watchlist=watchlist[:MAX_WATCHLIST_EMAIL],
+        watchlist_total=len(watchlist),
         total_raw_trends=num_raw_trends,
-        total_trends_qualified=num_trends_qualified,
+        total_trends_qualified=num_trends_qualified
     )
 
     # Safety check
