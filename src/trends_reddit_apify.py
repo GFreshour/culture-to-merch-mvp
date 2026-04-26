@@ -85,7 +85,7 @@ def get_reddit_trends_apify():
             "maxItems": len(SUBREDDITS) * POST_LIMIT
         }
 
-        run = client.actor("trudax/reddit-hot-scraper").call(run_input=run_input)
+        run = client.actor("vyshu_2006/reddit-hot-scraper").call(run_input=run_input)
 
         dataset = client.dataset(run["defaultDatasetId"])
 
