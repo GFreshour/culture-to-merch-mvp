@@ -33,6 +33,7 @@ from trends_tiktok import get_tiktok_trends
 from trends_substack import get_substack_trends
 from trends_google import get_daily_trends
 from ai_trend_expander import expand_trends_with_ai
+from trends_reddit_apify import get_reddit_trends_apify
 
 from tier0_product_gate import run_productability_gate
 
@@ -607,10 +608,19 @@ def run():
     #raw_reddit_trends = get_reddit_trends(client)
     
     try:
-        raw_reddit_trends = get_reddit_trends_rss()
+        raw_reddit_trends = get_reddit_trends_apify()
+
+        if not raw_reddit_trends:
+            print("🔁 Apify empty — falling back to RSS")
+            raw_reddit_trends = get_reddit_trends_rss()
+
     except Exception as e:
-        print(f"⚠️ Reddit RSS failed completely: {e}")
-        raw_reddit_trends = []
+        print(f"⚠️ Apify failed completely: {e}")
+
+        try:
+            raw_reddit_trends = get_reddit_trends_rss()
+        except:
+            raw_reddit_trends = []
     
     try:
         trends_tiktok = get_tiktok_trends()
