@@ -27,12 +27,15 @@ def is_valid_trend(title: str):
 
     word_count = len(t.split())
 
+    # Length control
     if word_count < 3 or word_count > 14:
         return False
 
+    # Reject questions
     if t.endswith("?"):
         return False
 
+    # Context dependent junk
     context_phrases = [
         "this", "that", "these", "those",
         "today i", "yesterday i",
@@ -46,6 +49,7 @@ def is_valid_trend(title: str):
     if any(p in tl for p in context_phrases):
         return False
 
+    # Meta / admin / weak newsy titles
     blocked_phrases = [
         "reminder", "political", "ban", "mod",
         "rule", "announcement", "psa",
@@ -55,12 +59,15 @@ def is_valid_trend(title: str):
     if any(b in tl for b in blocked_phrases):
         return False
 
+    # URLs
     if "http://" in tl or "https://" in tl:
         return False
 
+    # Spam punctuation
     if re.search(r"[!?.]{3,}", t):
         return False
 
+    # Weak long sentence style
     if "," in t and word_count > 10:
         return False
 
@@ -79,18 +86,29 @@ def get_reddit_trends_apify():
     trends = []
 
     try:
+        print("🚀 Pulling Reddit trends from Apify...")
+
         run_input = {
-            "subreddits": SUBREDDITS,
-            "sort": "hot",
-            "maxItems": len(SUBREDDITS) * POST_LIMIT
+            "community_names": SUBREDDITS,
+            "max_results": len(SUBREDDITS) * POST_LIMIT,
+            "sort_by": "hot",
+            "time_filter": "day"
         }
 
-        run = client.actor("vyshu_2006/reddit-hot-scraper").call(run_input=run_input)
+        run = client.actor("saswave/reddit-advanced-scraper").call(
+            run_input=run_input
+        )
 
         dataset = client.dataset(run["defaultDatasetId"])
 
         for item in dataset.iterate_items():
-            title = item.get("title", "").strip()
+
+            title = (
+                item.get("title")
+                or item.get("post_title")
+                or item.get("headline")
+                or ""
+            ).strip()
 
             if not title:
                 continue
@@ -98,15 +116,27 @@ def get_reddit_trends_apify():
             if not is_valid_trend(title):
                 continue
 
+            subreddit = (
+                item.get("subreddit")
+                or item.get("community_name")
+                or ""
+            )
+
+            score = (
+                item.get("score")
+                or item.get("upvotes")
+                or 0
+            )
+
             trends.append({
                 "title": title,
-                "subreddit": item.get("subreddit", ""),
-                "score": item.get("score", 0)
+                "subreddit": subreddit,
+                "score": score
             })
+
+        print(f"📊 Apify Reddit trends fetched: {len(trends)}")
+        return trends
 
     except Exception as e:
         print(f"⚠️ Apify Reddit failed: {e}")
         return []
-
-    print(f"📊 Apify Reddit trends fetched: {len(trends)}")
-    return trends
