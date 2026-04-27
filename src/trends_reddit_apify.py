@@ -1,3 +1,7 @@
+# trends_reddit_apify.py
+# Uses: trudax/reddit-scraper-lite
+# Goal: Drop-in Reddit source for your merch trend pipeline
+
 import os
 import re
 from apify_client import ApifyClient
@@ -18,6 +22,9 @@ SUBREDDITS = [
 POST_LIMIT = 15
 
 
+# -----------------------------------
+# SAME FILTERING YOU ALREADY USE
+# -----------------------------------
 def is_valid_trend(title: str):
     if not title:
         return False
@@ -27,15 +34,12 @@ def is_valid_trend(title: str):
 
     word_count = len(t.split())
 
-    # Length control
     if word_count < 3 or word_count > 14:
         return False
 
-    # Reject questions
     if t.endswith("?"):
         return False
 
-    # Context dependent junk
     context_phrases = [
         "this", "that", "these", "those",
         "today i", "yesterday i",
@@ -49,7 +53,6 @@ def is_valid_trend(title: str):
     if any(p in tl for p in context_phrases):
         return False
 
-    # Meta / admin / weak newsy titles
     blocked_phrases = [
         "reminder", "political", "ban", "mod",
         "rule", "announcement", "psa",
@@ -59,21 +62,21 @@ def is_valid_trend(title: str):
     if any(b in tl for b in blocked_phrases):
         return False
 
-    # URLs
     if "http://" in tl or "https://" in tl:
         return False
 
-    # Spam punctuation
     if re.search(r"[!?.]{3,}", t):
         return False
 
-    # Weak long sentence style
     if "," in t and word_count > 10:
         return False
 
     return True
 
 
+# -----------------------------------
+# MAIN FUNCTION
+# -----------------------------------
 def get_reddit_trends_apify():
     token = os.getenv("APIFY_TOKEN")
 
@@ -88,31 +91,31 @@ def get_reddit_trends_apify():
     try:
         print("🚀 Pulling Reddit trends from Apify...")
 
+        # Build subreddit URLs
+        start_urls = []
+        for sub in SUBREDDITS:
+            start_urls.append(
+                {"url": f"https://www.reddit.com/r/{sub}/hot/"}
+            )
+
         run_input = {
-            "community_names": SUBREDDITS,
-            "max_results": len(SUBREDDITS) * POST_LIMIT,
-            "sort_by": "hot",
-            "time_filter": "day"
+            "startUrls": start_urls,
+            "maxItems": len(SUBREDDITS) * POST_LIMIT
         }
 
-        run = client.actor("saswave/reddit-advanced-scraper").call(
+        run = client.actor("trudax/reddit-scraper-lite").call(
             run_input=run_input
         )
 
         dataset = client.dataset(run["defaultDatasetId"])
 
-        count = 0
-
         for item in dataset.iterate_items():
-            print(item)
-            count += 1
-            if count >= 3:
-                break
 
+            # Helpful if actor field names vary
             title = (
                 item.get("title")
-                or item.get("post_title")
-                or item.get("headline")
+                or item.get("postTitle")
+                or item.get("name")
                 or ""
             ).strip()
 
@@ -124,7 +127,8 @@ def get_reddit_trends_apify():
 
             subreddit = (
                 item.get("subreddit")
-                or item.get("community_name")
+                or item.get("communityName")
+                or item.get("source")
                 or ""
             )
 
