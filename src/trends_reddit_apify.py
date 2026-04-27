@@ -101,7 +101,13 @@ def get_reddit_trends_apify():
 
         dataset = client.dataset(run["defaultDatasetId"])
 
+        count = 0
+
         for item in dataset.iterate_items():
+            print(item)
+            count += 1
+            if count >= 3:
+                break
 
             title = (
                 item.get("title")
