@@ -608,8 +608,8 @@ def run():
     #raw_reddit_trends = get_reddit_trends(client)
     
     try:
-        raw_reddit_trends = get_reddit_trends_apify()
-
+        #raw_reddit_trends = get_reddit_trends_apify()
+        raw_reddit_trends = get_reddit_trends_rss()
         if not raw_reddit_trends:
             print("🔁 Apify empty — falling back to RSS")
             raw_reddit_trends = get_reddit_trends_rss()
