@@ -99,8 +99,31 @@ def get_reddit_trends_apify():
             )
 
         run_input = {
-            "startUrls": start_urls,
-            "maxItems": len(SUBREDDITS) * POST_LIMIT
+            "startUrls": [
+                {"url": "https://www.reddit.com/r/funny/hot/"},
+                {"url": "https://www.reddit.com/r/memes/hot/"},
+                {"url": "https://www.reddit.com/r/showerthoughts/hot/"},
+                {"url": "https://www.reddit.com/r/wholesomememes/hot/"},
+                {"url": "https://www.reddit.com/r/AskReddit/hot/"},
+                {"url": "https://www.reddit.com/r/facepalm/hot/"},
+                {"url": "https://www.reddit.com/r/NotTheOnion/hot/"},
+                {"url": "https://www.reddit.com/r/antiwork/hot/"},
+                {"url": "https://www.reddit.com/r/gaming/hot/"},
+                {"url": "https://www.reddit.com/r/parenting/hot/"}
+            ],
+
+            "sort": "hot",
+            "skipComments": True,
+            "maxComments": 0,
+            "skipCommunity": True,
+            "includeNSFW": False,
+
+            "maxItems": 50,
+            "maxPostCount": 8,
+
+            "proxy": {
+                "useApifyProxy": True
+            }
         }
 
         run = client.actor("trudax/reddit-scraper-lite").call(
