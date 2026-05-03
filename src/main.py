@@ -600,8 +600,51 @@ def send_tier2_email(to_email=None, date_str=None, email_body=None, pdf_path=Non
         attachment_path=pdf_path
     )
 
+def build_log_email(log, runtime):
+    return f"""
+    <h2>📊 DAILY PIPELINE HEALTH</h2>
+
+    <h3>Sources</h3>
+    <ul>
+        <li>Reddit: {log.get('reddit_count', 0)}</li>
+        <li>TikTok: {log.get('tiktok_count', 0)}</li>
+        <li>Substack: {log.get('substack_count', 0)}</li>
+        <li>Google Trends: {log.get('google_count', 0)}</li>
+    </ul>
+
+    <h3>Pipeline Flow</h3>
+    <ul>
+        <li>Total Raw Trends: {log.get('total_raw', 0)}</li>
+        <li>After Dedupe: {log.get('after_dedupe', 0)}</li>
+        <li>After History Filter: {log.get('after_history', 0)}</li>
+        <li>Gate 0 Passed: {log.get('gate0_passed', 0)}</li>
+        <li>AI Expansion Triggered: {log.get('ai_triggered', False)}</li>
+        <li>After AI Expansion: {log.get('after_ai', 0)}</li>
+        <li>After Sniff Test: {log.get('after_sniff', 0)}</li>
+    </ul>
+
+    <h3>⏱ Runtime</h3>
+    <p>{runtime:.2f} seconds</p>
+    """
+
 # ---------------- MAIN ----------------
 def run():
+    import time
+    start_time = time.time()
+
+    log = {
+        "reddit_count": 0,
+        "tiktok_count": 0,
+        "substack_count": 0,
+        "google_count": 0,
+        "total_raw": 0,
+        "after_dedupe": 0,
+        "after_history": 0,
+        "gate0_passed": 0,
+        "ai_triggered": False,
+        "after_ai": 0,
+        "after_sniff": 0
+    }
     print("☕ Generating Daily Merch Ideas (Semi-AI MVP)…")
 
     print("☕ Fetching trends from Reddit and TikTok…")
@@ -609,6 +652,7 @@ def run():
     
     try:
         raw_reddit_trends = get_reddit_trends_apify()
+        log["reddit_count"] = len(raw_reddit_trends)
         #raw_reddit_trends = get_reddit_trends_rss()
         if not raw_reddit_trends:
             print("🔁 Apify empty — falling back to RSS")
@@ -624,23 +668,26 @@ def run():
     
     try:
         trends_tiktok = get_tiktok_trends()
+        log["tiktok_count"] = len(trends_tiktok)
     except Exception as e:
         print(f"⚠️ TikTok scraper failed completely: {e}")
         trends_tiktok = []
     
     #Get substrack trends
     substack_trends = get_substack_trends(client)
+    log["substack_count"] = len(substack_trends)
     print(f"📊 Substack trends fetched: {len(substack_trends)}")
 
     try:
         google_trends = get_daily_trends()
+        log["google_count"] = len(google_trends)
     except Exception as e:
         print(f"⚠️ Google rss feed scraper failed completely: {e}")
         google_trends = []
     
 
     all_raw_trends = raw_reddit_trends + trends_tiktok + substack_trends + google_trends
-    
+    log["total_raw"] = len(all_raw_trends)
     #raw_x_trends = get_x_trends(client)
 
     # Combine both sources
@@ -650,9 +697,11 @@ def run():
 
     # Dedup and ensure trends are not from the last report
     all_raw_trends = dedupe_trends(all_raw_trends)
+    log["after_dedupe"] = len(all_raw_trends)
     print(f"📊 After internal dedupe: {len(all_raw_trends)}")
 
     all_raw_trends = remove_recent_trends(all_raw_trends)
+    log["after_history"] = len(all_raw_trends)
     print(f"📊 After history filter: {len(all_raw_trends)}")
 
     num_raw_trends = len(all_raw_trends)  # count of all trends for email
@@ -668,6 +717,7 @@ def run():
             gate_passed_trends.append(gated)
 
     print(f"✅ {len(gate_passed_trends)} trends passed Gate 0")
+    log["gate0_passed"] = len(gate_passed_trends)
 
     # ----------------------------
     # 🤖 AI Expansion (ONLY IF LOW VOLUME)
@@ -676,6 +726,7 @@ def run():
 
     if len(gate_passed_trends) < MIN_TRENDS_AFTER_GATE0:
         print(f"⚠️ Only {len(gate_passed_trends)} trends after Gate 0 — expanding with AI...")
+        log["ai_triggered"] = True
 
         ai_trends = expand_trends_with_ai(client, gate_passed_trends)
 
@@ -689,6 +740,7 @@ def run():
         gate_passed_trends.extend(ai_trends_filtered)
 
         print(f"📊 After AI expansion: {len(gate_passed_trends)} trends")
+        log["after_ai"] = len(gate_passed_trends)
 
     # Use gate_passed_trends going forward
     trends = gate_passed_trends
@@ -743,6 +795,7 @@ def run():
         trend["tier2_sniff"] = run_tier2_sniff(trend, client)
     
     print(f"📊 Trends after sniff test: {len(trends)}")
+    log["after_sniff"] = len(trends)
     # --------------------------------
     # NORMALIZE NUMERIC SCORES (FIXED SCALE)
     # --------------------------------
@@ -1356,15 +1409,36 @@ def run():
 
     print("📬 Tiered emails sent successfully!")
 
+    runtime = time.time() - start_time
+
+    log_email = build_log_email(log, runtime)
+
+    send_email_simple(
+        subject="📊 Merch Scout Run Summary",
+        html_body=log_email
+    )
 
 # ---------------- ENTRY ----------------
 if __name__ == "__main__":
     try:
         run()
     except Exception as e:
+        runtime = time.time() - start_time if 'start_time' in locals() else 0
+
+        try:
+            log_email = build_log_email(log if 'log' in locals() else {}, runtime)
+            send_email_simple(
+                subject="⚠️ Merch Scout FAILED (with logs)",
+                html_body=log_email
+            )
+        except:
+            pass
+
         print(f"❌ Main pipeline failed: {e}")
+
         if not TEST_ENV:
             send_failure_email(e)
-        raise  # keep the error in logs and exit with failure
+
+        raise
 
 
