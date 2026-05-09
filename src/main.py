@@ -223,6 +223,40 @@ def score_trend(trend):
     else:
         return "Low"
 
+GENERIC_PHRASES = [
+    "vibes",
+    "elevate",
+    "shine",
+    "dream",
+    "warrior",
+    "journey",
+    "mindset",
+    "energy",
+    "future",
+    "boss",
+    "only",
+    "rise",
+    "unleash",
+    "revolution",
+    "era",
+    "level up",
+    "greatness"
+]
+
+def generic_phrase_penalty(text):
+    if not text:
+        return 0
+
+    text = text.lower()
+
+    penalty = 0
+
+    for phrase in GENERIC_PHRASES:
+        if phrase in text:
+            penalty += 8
+
+    return penalty
+
 def clean_text_for_prompt(text: str) -> str:
     """
     Cleans text so it is safe to inject into AI prompts.
@@ -363,16 +397,61 @@ Instructions:
     - Avoid all Medium scores; be decisive.
 
 Additional guidance:
-- These trends have already passed strong commercial filters and are considered high-potential candidates.
-- Your job is NOT to validate them, but to differentiate them.
-- Be decisive in ranking signals — some should clearly be stronger than others.
-- Avoid neutral or safe scoring.
-- You are comparing this trend against other high-potential trends. Not all can be winners — some must be clearly stronger or weaker.
-- Be commercially sharp, tactical, and specific.
-- Avoid vague, generic phrases or filler.
-- If the trend is weak, state it clearly.
-- If everything is Medium, you are wrong.
-- Return JSON only — no commentary, no extra text.
+
+- DO NOT generate generic motivational slogans.
+- Avoid overused merch language like:
+  "vibes", "elevate", "unleash", "shine", "dream", "warrior",
+  "mindset", "era", "journey", "energy", "legend", "boss",
+  "only", "revolution", "future", "rise", "level up".
+
+- Avoid Hallmark-style positivity.
+- Avoid fake inspirational language.
+- Avoid corporate wellness phrasing.
+- Avoid generic Etsy-style empowerment slogans.
+
+- Strong merch concepts are:
+  weird,
+  culturally specific,
+  emotionally sharp,
+  identity-driven,
+  ironic,
+  hyper-niche,
+  or socially recognizable.
+
+- Prefer:
+  subculture language,
+  internet behavior,
+  fandom behavior,
+  awkward truths,
+  tribal identity,
+  emotionally specific humor,
+  insider references,
+  contradictions,
+  and culturally recognizable tensions.
+
+- Merch headlines should feel:
+  memetic,
+  socially specific,
+  instantly visualizable,
+  and difficult to confuse with generic POD content.
+
+- BAD examples:
+  "Shine Bright"
+  "Elevate Your Journey"
+  "Dream Bigger"
+  "Protect Your Energy"
+
+- GOOD examples:
+  "I Paused My Game For This"
+  "Emotionally Attached To Rotting Produce"
+  "Powered By Gas Station Coffee"
+  "My Other Personality Is At Home"
+
+- If the concept feels generic, predictable, or reusable across unrelated niches, reject it internally and generate a sharper angle.
+
+- Your goal is differentiation, not positivity.
+
+- Return JSON only.
 """.strip()
 
 # ---------------- PROMPT (Watchlist / Rapid Tier 2 Enrichment) ----------------
@@ -871,11 +950,22 @@ def run():
         audience_map = {"high": 100, "medium": 60, "low": 30}
         audience = audience_map.get(sniff.get("audience_size"), 60)
 
-        return (
-            commercial * 0.6 +     # stronger weight
-            confidence * 0.3 +     # NEW: confidence matters
-            audience * 0.1         # keep light
+        headline = (
+            t.get("ai_enrichment", {})
+            .get("merch_headline", "")
         )
+
+        generic_penalty = generic_phrase_penalty(headline)
+
+        final_score = (
+            commercial * 0.6 +
+            confidence * 0.3 +
+            audience * 0.1
+        )
+
+        final_score -= generic_penalty
+
+        return final_score
 
     trends.sort(key=weighted_score, reverse=True)
 
