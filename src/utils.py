@@ -22,6 +22,7 @@ def normalize_for_pdf(trend: dict) -> dict:
         "differentiation_strategy": ai.get("differentiation_strategy", ""),
         "risk_level": ai.get("risk_level", ""),
         "execution_priority": ai.get("execution_priority", ""),
+        "ai_artwork_prompt": ai.get("ai_artwork_prompt", ""),
         "trend_signals": ai.get("trend_signals", {}),
 
         # Scoring Layer

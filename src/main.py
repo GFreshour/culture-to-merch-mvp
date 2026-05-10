@@ -319,6 +319,7 @@ Return STRICT JSON ONLY with this schema:
   "differentiation_strategy": "",
   "risk_level": "",
   "execution_priority": "",
+  "ai_artwork_prompt": "",
   "trend_signals": {{
       "merch_potential": "",
       "hashtag_growth": "",
@@ -395,6 +396,45 @@ Instructions:
     - Provide rationale for each score.
     - Give real examples if relevant.
     - Avoid all Medium scores; be decisive.
+
+13. **ai_artwork_prompt**
+   - Create a platform-agnostic AI artwork generation prompt optimized for merchandise design.
+   - Focus ONLY on the printable artwork/design itself.
+   - DO NOT describe:
+     - t-shirts
+     - hoodies
+     - mockups
+     - models
+     - product photography
+     - backgrounds outside the artwork composition
+
+   - The artwork prompt MUST align with the previously generated:
+     - buyer_psychology
+     - target_audience
+     - design_direction
+     - niche_variations
+
+   - The visual direction should feel like a direct execution of the merch strategy above.
+
+   - Include:
+     - artistic style
+     - composition
+     - typography style
+     - textures
+     - color palette
+     - mood
+     - visual hierarchy
+
+   - Optimize for:
+     - screen print aesthetics
+     - POD friendliness
+     - strong thumbnail visibility
+     - emotionally recognizable visuals
+
+   - Keep under 120 words.
+
+   - Example quality:
+     "Distressed retro illustration of an exhausted raccoon drinking gas station coffee, muted olive and cream palette, vintage halftone texture, centered composition, thick collegiate typography, simplified vector shapes, worn screen print aesthetic, ironic sleep-deprived mood, dark background, high contrast"
 
 Additional guidance:
 
@@ -1171,6 +1211,9 @@ def run():
         #/* Signals / Highlight Blocks */
         ".signals { background: #f9fafb; border-radius: 8px; padding: 14px; margin: 14px 0; border: 1px solid #eef2f7; }",
 
+        #/* Box for the artistic promp */
+        ".prompt-box { background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 8px; padding: 14px; font-family: monospace; font-size: 12px; line-height: 1.7; color: #1f2937; white-space: pre-wrap; margin-top: 10px; }",
+        
         #/* Niche Variations Card */
         ".niche-card { background: #f9fafb; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; border: 1px solid #e5e7eb; }",
         ".niche-card strong { font-size: 14px; color: #111827; }",
@@ -1311,6 +1354,7 @@ def run():
             diff = t.get("differentiation_strategy", "")
             risk = t.get("risk_level", "")
             priority = t.get("execution_priority", "")
+            artwork_prompt = t.get("ai_artwork_prompt", "")
 
             # Gate 0
             sniff = t.get("tier2_sniff", {}) or {}
@@ -1362,6 +1406,9 @@ def run():
 
                 "<div class='section'><h3>Design Direction</h3></div>",
                 f"<p>{html.escape(design or '—')}</p>",
+
+                "<div class='section'><h3>AI Artwork Prompt</h3></div>",
+                f"<div class='prompt-box'>{html.escape(artwork_prompt or 'not available')}</div>",
 
                 "<div class='section'><h3>🎨 Niche-Specific Variations (Where the Money Is)</h3></div>",
                 niche_html,
