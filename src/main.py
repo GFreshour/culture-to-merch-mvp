@@ -721,28 +721,58 @@ def send_tier2_email(to_email=None, date_str=None, email_body=None, pdf_path=Non
 
 def build_log_email(log, runtime):
     return f"""
-    <h2>📊 DAILY PIPELINE HEALTH</h2>
+    <h2>📊 Merch Scout Pipeline Health</h2>
 
-    <h3>Sources</h3>
+    <h3>Source Health</h3>
     <ul>
-        <li>Reddit: {log.get('reddit_count', 0)}</li>
-        <li>TikTok: {log.get('tiktok_count', 0)}</li>
-        <li>Substack: {log.get('substack_count', 0)}</li>
-        <li>Google Trends: {log.get('google_count', 0)}</li>
+        <li>Apify Reddit: {log.get('apify_count', 0)}
+            {'❌ FAILED' if log.get('apify_failed') else '✅'}
+        </li>
+
+        <li>RSS Reddit: {log.get('reddit_rss_count', 0)}
+            {'(used)' if log.get('reddit_rss_used') else ''}
+            {'❌ FAILED' if log.get('reddit_rss_failed') else ''}
+        </li>
+
+        <li>TikTok: {log.get('tiktok_count', 0)}
+            {'❌ FAILED' if log.get('tiktok_failed') else '✅'}
+        </li>
+
+        <li>Substack: {log.get('substack_count', 0)}
+            {'❌ FAILED' if log.get('substack_failed') else '✅'}
+        </li>
+
+        <li>Google: {log.get('google_count', 0)}
+            {'❌ FAILED' if log.get('google_failed') else '✅'}
+        </li>
     </ul>
 
-    <h3>Pipeline Flow</h3>
+    <h3>Pipeline Funnel</h3>
     <ul>
-        <li>Total Raw Trends: {log.get('total_raw', 0)}</li>
-        <li>After Dedupe: {log.get('after_dedupe', 0)}</li>
-        <li>After History Filter: {log.get('after_history', 0)}</li>
-        <li>Gate 0 Passed: {log.get('gate0_passed', 0)}</li>
-        <li>AI Expansion Triggered: {log.get('ai_triggered', False)}</li>
-        <li>After AI Expansion: {log.get('after_ai', 0)}</li>
-        <li>After Sniff Test: {log.get('after_sniff', 0)}</li>
+        <li>Total Raw: {log.get('total_raw')}</li>
+        <li>After Dedupe: {log.get('after_dedupe')}</li>
+        <li>After History Filter: {log.get('after_history')}</li>
+
+        <li>Gate 0 Passed: {log.get('gate0_passed')}</li>
+        <li>Gate 0 Removed: {log.get('gate0_removed')}</li>
+
+        <li>Viability Removed: {log.get('viability_removed')}</li>
+
+        <li>After Sniff: {log.get('after_sniff')}</li>
+
+        <li>Commercial Removed: {log.get('commercial_removed')}</li>
+
+        <li>Final Top 5: {log.get('final_top5')}</li>
+        <li>Final Watchlist: {log.get('final_watchlist')}</li>
     </ul>
 
-    <h3>⏱ Runtime</h3>
+    <h3>AI Expansion</h3>
+    <ul>
+        <li>Triggered: {log.get('ai_triggered')}</li>
+        <li>After AI Expansion: {log.get('after_ai')}</li>
+    </ul>
+
+    <h3>Runtime</h3>
     <p>{runtime:.2f} seconds</p>
     """
 
@@ -752,17 +782,42 @@ def run():
     start_time = time.time()
 
     log = {
-        "reddit_count": 0,
+        # ---------- SOURCE HEALTH ----------
+        "apify_count": 0,
+        "apify_failed": False,
+
+        "reddit_rss_count": 0,
+        "reddit_rss_used": False,
+        "reddit_rss_failed": False,
+
         "tiktok_count": 0,
+        "tiktok_failed": False,
+
         "substack_count": 0,
+        "substack_failed": False,
+
         "google_count": 0,
+        "google_failed": False,
+
+        # ---------- PIPELINE COUNTS ----------
         "total_raw": 0,
         "after_dedupe": 0,
         "after_history": 0,
+
         "gate0_passed": 0,
+        "gate0_removed": 0,
+
+        "viability_removed": 0,
+
+        "after_sniff": 0,
+        "commercial_removed": 0,
+
+        "final_top5": 0,
+        "final_watchlist": 0,
+
+        # ---------- AI ----------
         "ai_triggered": False,
-        "after_ai": 0,
-        "after_sniff": 0
+        "after_ai": 0
     }
     print("☕ Generating Daily Merch Ideas (Semi-AI MVP)…")
 
@@ -771,18 +826,38 @@ def run():
     
     try:
         raw_reddit_trends = get_reddit_trends_apify()
-        log["reddit_count"] = len(raw_reddit_trends)
-        #raw_reddit_trends = get_reddit_trends_rss()
+
+        log["apify_count"] = len(raw_reddit_trends)
+
+        print(f"📊 Apify returned: {len(raw_reddit_trends)}")
+
         if not raw_reddit_trends:
             print("🔁 Apify empty — falling back to RSS")
+
+            log["reddit_rss_used"] = True
+
             raw_reddit_trends = get_reddit_trends_rss()
+
+            log["reddit_rss_count"] = len(raw_reddit_trends)
+
+            print(f"📊 Reddit RSS returned: {len(raw_reddit_trends)}")
 
     except Exception as e:
         print(f"⚠️ Apify failed completely: {e}")
 
+        log["apify_failed"] = True
+
         try:
+            log["reddit_rss_used"] = True
+
             raw_reddit_trends = get_reddit_trends_rss()
-        except:
+
+            log["reddit_rss_count"] = len(raw_reddit_trends)
+
+            print(f"📊 Reddit RSS returned: {len(raw_reddit_trends)}")
+
+        except Exception:
+            log["reddit_rss_failed"] = True
             raw_reddit_trends = []
     
     try:
@@ -790,11 +865,19 @@ def run():
         log["tiktok_count"] = len(trends_tiktok)
     except Exception as e:
         print(f"⚠️ TikTok scraper failed completely: {e}")
+        log["tiktok_failed"] = True
         trends_tiktok = []
     
     #Get substrack trends
-    substack_trends = get_substack_trends(client)
-    log["substack_count"] = len(substack_trends)
+    try:
+        substack_trends = get_substack_trends(client)
+        log["substack_count"] = len(substack_trends)
+
+    except Exception as e:
+        print(f"⚠️ Substack failed: {e}")
+        log["substack_failed"] = True
+        substack_trends = []
+    
     print(f"📊 Substack trends fetched: {len(substack_trends)}")
 
     try:
@@ -802,6 +885,7 @@ def run():
         log["google_count"] = len(google_trends)
     except Exception as e:
         print(f"⚠️ Google rss feed scraper failed completely: {e}")
+        log["google_failed"] = True
         google_trends = []
     
 
@@ -837,6 +921,12 @@ def run():
 
     print(f"✅ {len(gate_passed_trends)} trends passed Gate 0")
     log["gate0_passed"] = len(gate_passed_trends)
+
+    log["gate0_removed"] = (
+        log["after_history"] - len(gate_passed_trends)
+    )
+
+    print(f"❌ Gate 0 removed: {log['gate0_removed']}")
 
     # ----------------------------
     # 🤖 AI Expansion (ONLY IF LOW VOLUME)
@@ -890,7 +980,10 @@ def run():
     ]
 
     print(f"📉 Removed {before_filter - len(trends)} trends during viability filter")
-
+    
+    log["viability_removed"] = (
+        before_filter - len(trends)
+    )
     # ----------------------------
     # 3 Sort by viability
     # ----------------------------
@@ -970,6 +1063,12 @@ def run():
         t for t in trends
         if t.get("commercial_score", 0) >= 40
     ]
+
+    log["commercial_removed"] = (
+        log["after_sniff"] - len(trends)
+    )
+
+    print(f"❌ Removed by commercial score: {log['commercial_removed']}")
 
     if not trends:
         print("⚠️ No strong trends found after sniff filtering.")
@@ -1122,9 +1221,10 @@ def run():
                 break
 
     print(f"📊 Final watchlist size: {len(watchlist)}")
-    #for trend in early:
-    #    trend["report_tier"] = "Early Signal"
-
+    
+    log["final_top5"] = len(top5)
+    log["final_watchlist"] = len(watchlist)
+    
     # ----------------
     # Prepare output
     # ----------------
