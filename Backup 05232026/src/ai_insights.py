@@ -2,8 +2,7 @@ import os
 from openai import OpenAI
 import html
 import json
-#from utils import normalize_for_pdf, normalize_watchlist_for_pdf, extract_display_signals, normalize_hml
-from utils import normalize_for_pdf, extract_display_signals, normalize_hml
+from utils import normalize_for_pdf, normalize_watchlist_for_pdf, extract_display_signals, normalize_hml
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -12,13 +11,7 @@ def generate_tier1_intro_outro(trends, date_str):
     Generates a friendly, playful intro and outro for Tier 1 emails.
     Includes subtle upsell to Tier 2 (Builder edition) and trademark reminder.
     """
-    #trend_titles = [t.get("slogan", "") for t in trends[:4]]
-    trend_titles = [
-        (
-            t.get("ai_enrichment", {}) or {}
-        ).get("merch_headline", "")
-        for t in trends[:4]
-    ]
+    trend_titles = [t.get("slogan", "") for t in trends[:4]]
     titles_text = "; ".join(trend_titles)
 
     prompt = f"""
@@ -144,7 +137,7 @@ Return valid JSON only:
             "Check trademarks before listing. Hope these insights spark some fun merch creations!"
         )
 
-#from ai_insights import generate_tier1_intro_outro
+from ai_insights import generate_tier1_intro_outro
 
 def tier1_opportunity_line(trend: dict) -> str:
     """
@@ -302,9 +295,8 @@ def generate_tier2_email(
     Cleaner premium layout + top deep dive + watchlist + PDF reminder.
     """
 
-    #from utils import normalize_for_pdf, normalize_watchlist_for_pdf
-    from utils import normalize_for_pdf
-    
+    from utils import normalize_for_pdf, normalize_watchlist_for_pdf
+
     normalized_trends = [normalize_for_pdf(t) for t in trends]
 
     intro, outro = generate_tier2_intro_outro(normalized_trends, date_str)
@@ -436,29 +428,10 @@ def generate_tier2_email(
         <ul style="padding-left:20px;">
         """
 
-        #for item in watchlist:
-        #    w = normalize_watchlist_for_pdf(item)
-        #    title = w.get("merch_headline", "Untitled")
-        #    html += f"<li style='margin-bottom:8px;'>{title}</li>"
-
         for item in watchlist:
-            w = normalize_for_pdf(item)
-
+            w = normalize_watchlist_for_pdf(item)
             title = w.get("merch_headline", "Untitled")
-            insight = w.get("core_insight", "")
-            priority = w.get("execution_priority", "")
-            risk = w.get("risk_level", "")
-
-            html += f"""
-            <li style='margin-bottom:14px;'>
-                <strong>{html.escape(title)}</strong><br>
-                <span style="color:#444;">{html.escape(insight)}</span><br>
-                <span style="font-size:13px; color:#666;">
-                    Priority: {html.escape(priority or 'Monitor')}
-                    • Risk: {html.escape(risk or 'Unknown')}
-                </span>
-            </li>
-            """
+            html += f"<li style='margin-bottom:8px;'>{title}</li>"
 
         html += "</ul>"
 

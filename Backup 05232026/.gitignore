@@ -1,0 +1,9 @@
+# Output files (generated reports)
+output/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Environment variables / secrets
+.env

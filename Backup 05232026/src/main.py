@@ -24,8 +24,7 @@ from ai_insights import (
     format_percent,
     outlook_interpretation
 )
-#from utils import normalize_for_pdf, normalize_watchlist_for_pdf, extract_display_signals, normalize_hml
-from utils import normalize_for_pdf, extract_display_signals, normalize_hml
+from utils import normalize_for_pdf, normalize_watchlist_for_pdf, extract_display_signals, normalize_hml
 
 #from trends_reddit import get_reddit_trends
 from trends_reddit_rss import get_reddit_trends_rss
@@ -496,85 +495,85 @@ Additional guidance:
 """.strip()
 
 # ---------------- PROMPT (Watchlist / Rapid Tier 2 Enrichment) ----------------
-#def build_watchlist_prompt(trend):
-#    """
-#    Builds the AI prompt for Watchlist / rapid Tier 2 enrichment.
-#    Returns strict JSON but with lighter detail than Top 5.
-#    """
-#    clean_title = clean_text_for_prompt(trend['title'])
-#
-#    source = trend.get('source', 'unknown').capitalize()
-#
-#    return f"""
-#You are a merch analyst providing a quick evaluation of a trend for potential print-on-demand products.
-#
-#Trend ({source}):
-#"{clean_title}"
-#
-#Return STRICT JSON ONLY, using this schema:
-#
-#{{
-#  "merch_headline": "",
-#  "core_insight": "",
-#  "primary_product": "",
-#  "secondary_products": [],
-#  "design_suggestion": "",
-#  "angle_variations": ["", ""],
-#  "risk_level": "",
-#  "trend_signals": {{
-#      "merch_potential": "",
-#      "hashtag_growth": "",
-#      "memetic_variations": "",
-#      "cross_platform_spread": "",
-#      "search_volume_mentions": "",
-#      "merch_branding": "",
-#      "rationale": "",
-#      "examples": []
-#  }}
-#}}
-#
-#Instructions:
-#
-#1. **merch_headline**
-#   - Create ONE short, punchy slogan (3–7 words max).
-#   - Compress the Reddit title into a sellable hook.
-#   - Must work on a shirt, mug, or sticker.
-#
-#2. **core_insight**
-#   - Briefly explain why this trend resonates.
-#   - Identify the human or emotional connection that drives interest.
-#
-#3. **primary_product**
-#   - ONE product most likely to convert quickly.
-#
-#4. **secondary_products**
-#   - Up to 2 logical complementary products.
-#
-#5. **design_suggestion**
-#   - Short, actionable style/layout advice (2–3 sentences max).
-#   - Include colors, fonts, and imagery if relevant.
-#
-#6. **angle_variations**
-#   - Provide 2 alternate slogans, angles, or spin-offs for merch.
-#   - Should feel distinct and monetizable.
-#
-#7. **risk_level**
-#   - Low / Medium / High commercial risk, with a short justification.
-#   - Be realistic; don’t sugarcoat weak trends.
-#
-#8. **trend_signals**
-#   - Assign realistic High / Medium / Low scores per category:
-#     - merch_potential, hashtag_growth, memetic_variations,
-#       cross_platform_spread, search_volume_mentions, merch_branding
-#   - Provide concise rationale for each score.
-#   - Include examples if applicable.
-#   - Avoid generic “all Medium” scores; be decisive.
-#
-#Additional guidance:
-#- Keep it concise, tactical, and commercially actionable.
-#- Avoid vague phrases or filler.
-#- Return JSON only — no commentary or extra text.
-#""".strip()
+def build_watchlist_prompt(trend):
+    """
+    Builds the AI prompt for Watchlist / rapid Tier 2 enrichment.
+    Returns strict JSON but with lighter detail than Top 5.
+    """
+    clean_title = clean_text_for_prompt(trend['title'])
+
+    source = trend.get('source', 'unknown').capitalize()
+
+    return f"""
+You are a merch analyst providing a quick evaluation of a trend for potential print-on-demand products.
+
+Trend ({source}):
+"{clean_title}"
+
+Return STRICT JSON ONLY, using this schema:
+
+{{
+  "merch_headline": "",
+  "core_insight": "",
+  "primary_product": "",
+  "secondary_products": [],
+  "design_suggestion": "",
+  "angle_variations": ["", ""],
+  "risk_level": "",
+  "trend_signals": {{
+      "merch_potential": "",
+      "hashtag_growth": "",
+      "memetic_variations": "",
+      "cross_platform_spread": "",
+      "search_volume_mentions": "",
+      "merch_branding": "",
+      "rationale": "",
+      "examples": []
+  }}
+}}
+
+Instructions:
+
+1. **merch_headline**
+   - Create ONE short, punchy slogan (3–7 words max).
+   - Compress the Reddit title into a sellable hook.
+   - Must work on a shirt, mug, or sticker.
+
+2. **core_insight**
+   - Briefly explain why this trend resonates.
+   - Identify the human or emotional connection that drives interest.
+
+3. **primary_product**
+   - ONE product most likely to convert quickly.
+
+4. **secondary_products**
+   - Up to 2 logical complementary products.
+
+5. **design_suggestion**
+   - Short, actionable style/layout advice (2–3 sentences max).
+   - Include colors, fonts, and imagery if relevant.
+
+6. **angle_variations**
+   - Provide 2 alternate slogans, angles, or spin-offs for merch.
+   - Should feel distinct and monetizable.
+
+7. **risk_level**
+   - Low / Medium / High commercial risk, with a short justification.
+   - Be realistic; don’t sugarcoat weak trends.
+
+8. **trend_signals**
+   - Assign realistic High / Medium / Low scores per category:
+     - merch_potential, hashtag_growth, memetic_variations,
+       cross_platform_spread, search_volume_mentions, merch_branding
+   - Provide concise rationale for each score.
+   - Include examples if applicable.
+   - Avoid generic “all Medium” scores; be decisive.
+
+Additional guidance:
+- Keep it concise, tactical, and commercially actionable.
+- Avoid vague phrases or filler.
+- Return JSON only — no commentary or extra text.
+""".strip()
 
 
 def enrich_top5_with_ai(trend):
@@ -1110,215 +1109,118 @@ def run():
     trends.sort(key=weighted_score, reverse=True)
 
     # ----------------------------
-    # 7 FULL AI ENRICHMENT (UNIFIED)
-    # ----------------------------
-
-    print("🧠 Running unified enrichment on all qualified trends...")
-
-    enriched_trends = []
-
-    for idx, trend in enumerate(trends, 1):
-
-        print(f"🧠 Enriching Trend {idx}/{len(trends)}...")
-
-        enrichment = enrich_top5_with_ai(trend)
-
-        if not enrichment:
-            print(f"⚠️ Skipping failed enrichment: {trend['title']}")
-            continue
-
-        trend["ai_enrichment"] = enrichment
-
-        # --------------------------------
-        # STRONGER FINAL RANKING SIGNALS
-        # --------------------------------
-
-        signals = enrichment.get("trend_signals", {}) or {}
-
-        signal_map = {
-            "high": 15,
-            "medium": 7,
-            "low": 0
-        }
-
-        signal_bonus = (
-            signal_map.get(str(signals.get("merch_potential", "")).lower(), 0) +
-            signal_map.get(str(signals.get("cross_platform_spread", "")).lower(), 0) +
-            signal_map.get(str(signals.get("memetic_variations", "")).lower(), 0)
-        )
-
-        risk = str(enrichment.get("risk_level", "")).lower()
-
-        risk_penalty = 0
-
-        if "high" in risk:
-            risk_penalty = 10
-        elif "medium" in risk:
-            risk_penalty = 5
-
-        trend["final_rank_score"] = (
-            weighted_score(trend)
-            + signal_bonus
-            - risk_penalty
-        )
-
-        enriched_trends.append(trend)
-
-        print(
-            f"✅ Enriched: {trend['title']} "
-            f"(Final Score: {trend['final_rank_score']})"
-        )
-
-    if not enriched_trends:
-        print("⚠️ No enriched trends available.")
-        return
-
-    # ----------------------------
-    # FINAL SORT AFTER ENRICHMENT
-    # ----------------------------
-
-    enriched_trends.sort(
-        key=lambda t: t.get("final_rank_score", 0),
-        reverse=True
-    )
-
-    # ----------------------------
-    # FINAL STRATIFICATION
-    # ----------------------------
-
-    TEST_TOP5_LIMIT = 1 if TEST_MODE else 5
-    TEST_WATCHLIST_LIMIT = 1 if TEST_MODE else 15
-
-    top5 = enriched_trends[:TEST_TOP5_LIMIT]
-
-    watchlist = enriched_trends[
-        TEST_TOP5_LIMIT:
-        TEST_TOP5_LIMIT + TEST_WATCHLIST_LIMIT
-    ]
-
-    # Apply report tier labels
-    for t in top5:
-        t["report_tier"] = "Top 5"
-
-    for t in watchlist:
-        t["report_tier"] = "Watchlist"
-
-    print(f"📊 Final Top5 size: {len(top5)}")
-    print(f"📊 Final Watchlist size: {len(watchlist)}")
-
-    # ----------------------------
     # 7 Stratify into tiers
     # ----------------------------
 
-    #top5 = []
-    #watchlist = []
+    top5 = []
+    watchlist = []
 
     # ⚡ TEST_MODE — only keep 1 result
-    #TEST_TOP5_LIMIT = 1 if TEST_MODE else 5
-    #TEST_WATCHLIST_LIMIT = 1 if TEST_MODE else 15
+    TEST_TOP5_LIMIT = 1 if TEST_MODE else 5
+    TEST_WATCHLIST_LIMIT = 1 if TEST_MODE else 15
 
 
     # --------------------------------
     # AI ENRICHMENT — TOP 5 (DEEP BUILDER MODE)
     # --------------------------------
 
-    #print("🧠 Running Deep Enrichment on Top 5...")
+    print("🧠 Running Deep Enrichment on Top 5...")
 
-    #for trend in trends:
+    for trend in trends:
 
-    #    if len(top5) >= TEST_TOP5_LIMIT:
-    #        break
+        if len(top5) >= TEST_TOP5_LIMIT:
+            break
 
-    #    print(f"🔥 Deep Enriching Top Trend {len(top5)+1}...")
+        print(f"🔥 Deep Enriching Top Trend {len(top5)+1}...")
 
-    #    enrichment = enrich_top5_with_ai(trend)
+        enrichment = enrich_top5_with_ai(trend)
 
-    #    if not enrichment:
-    #        print(f"⚠️ Skipping failed Top5 trend: {trend['title']}")
-    #        continue
+        if not enrichment:
+            print(f"⚠️ Skipping failed Top5 trend: {trend['title']}")
+            continue
 
-    #    trend["ai_enrichment"] = enrichment
-    #    trend["report_tier"] = "Top 5"
+        trend["ai_enrichment"] = enrichment
+        trend["report_tier"] = "Top 5"
 
-    #    top5.append(trend)
+        top5.append(trend)
 
-    #    print(f"✅ Added to Top5: {trend['title']}")
+        print(f"✅ Added to Top5: {trend['title']}")
 
 
     # --------------------------------
     # LIGHT ENRICHMENT — WATCHLIST
     # --------------------------------
 
-    #print("👀 Running Light Enrichment on Watchlist...")
+    print("👀 Running Light Enrichment on Watchlist...")
 
-    #for trend in trends:
+    for trend in trends:
 
         # Skip anything already used in Top5
-    #    if trend in top5:
-    #        continue
+        if trend in top5:
+            continue
 
-    #    if len(watchlist) >= TEST_WATCHLIST_LIMIT:
-    #        break
+        if len(watchlist) >= TEST_WATCHLIST_LIMIT:
+            break
 
-    #    idx = len(watchlist) + 1
-    #    print(f"👀 Light Enriching Watchlist Trend {idx}...")
+        idx = len(watchlist) + 1
+        print(f"👀 Light Enriching Watchlist Trend {idx}...")
 
-    #    light_prompt = build_watchlist_prompt(trend)
+        light_prompt = build_watchlist_prompt(trend)
 
-    #    try:
-    #        response = client.chat.completions.create(
-    #            model="gpt-4o-mini",
-    #            messages=[{"role": "user", "content": light_prompt}],
-    #            temperature=0.5
-    #        )
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": light_prompt}],
+                temperature=0.5
+            )
 
-    #        raw_text = response.choices[0].message.content.strip()
+            raw_text = response.choices[0].message.content.strip()
 
-    #        # Strip code fences
-    #        if raw_text.startswith("```"):
-    #            raw_text = raw_text.replace("```json", "").replace("```", "").strip()
+            # Strip code fences
+            if raw_text.startswith("```"):
+                raw_text = raw_text.replace("```json", "").replace("```", "").strip()
 
-    #        parsed = json.loads(raw_text)
+            parsed = json.loads(raw_text)
 
-    #    except Exception as e:
-    #        print(f"⚠️ Watchlist enrichment failed for '{trend['title']}': {e}")
-    #        continue
+        except Exception as e:
+            print(f"⚠️ Watchlist enrichment failed for '{trend['title']}': {e}")
+            continue
 
-    #    trend["ai_enrichment"] = parsed
-    #    trend["report_tier"] = "Watchlist"
+        trend["ai_enrichment"] = parsed
+        trend["report_tier"] = "Watchlist"
 
-    #    watchlist.append(trend)
+        watchlist.append(trend)
 
-    #    print(f"✅ Watchlist enrichment attached to: {trend['title']}")
+        print(f"✅ Watchlist enrichment attached to: {trend['title']}")
 
     # --------------------------------
     # BACKFILL WATCHLIST IF TOO SMALL
     # --------------------------------
 
-    #WATCHLIST_TARGET = 15
+    WATCHLIST_TARGET = 15
 
-    #if len(watchlist) < WATCHLIST_TARGET:
+    if len(watchlist) < WATCHLIST_TARGET:
 
-    #    needed = WATCHLIST_TARGET - len(watchlist)
+        needed = WATCHLIST_TARGET - len(watchlist)
 
-    #    print(f"⚠️ Watchlist short by {needed}. Backfilling...")
+        print(f"⚠️ Watchlist short by {needed}. Backfilling...")
 
-    #    used_titles = {t["title"] for t in top5 + watchlist}
+        used_titles = {t["title"] for t in top5 + watchlist}
 
-    #    for trend in trends:
+        for trend in trends:
 
-    #        if trend["title"] in used_titles:
-    #            continue
+            if trend["title"] in used_titles:
+                continue
 
-    #        trend["report_tier"] = "Watchlist"
-    #        watchlist.append(trend)
+            trend["report_tier"] = "Watchlist"
+            watchlist.append(trend)
 
-    #        print(f"➕ Backfilled: {trend['title']}")
+            print(f"➕ Backfilled: {trend['title']}")
 
-    #        if len(watchlist) >= WATCHLIST_TARGET:
-    #            break
+            if len(watchlist) >= WATCHLIST_TARGET:
+                break
 
-    #print(f"📊 Final watchlist size: {len(watchlist)}")
+    print(f"📊 Final watchlist size: {len(watchlist)}")
     
     log["final_top5"] = len(top5)
     log["final_watchlist"] = len(watchlist)
@@ -1371,11 +1273,8 @@ def run():
     if len(tier2_email_body) < 300:
         raise ValueError("Tier 1 email body unexpectedly short")
 
-    #pdf_trends = [normalize_for_pdf(t) for t in top5]
-    #pdf_watchlist = [normalize_watchlist_for_pdf(t) for t in watchlist]
-
     pdf_trends = [normalize_for_pdf(t) for t in top5]
-    pdf_watchlist = [normalize_for_pdf(t) for t in watchlist]
+    pdf_watchlist = [normalize_watchlist_for_pdf(t) for t in watchlist]
 
     print(f"PDF TOP 5 trends count: {len(pdf_trends)}")
     print(f"PDF Watchlist trends count: {len(pdf_watchlist)}")
