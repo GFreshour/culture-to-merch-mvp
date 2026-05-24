@@ -444,21 +444,35 @@ def generate_tier2_email(
         for item in watchlist:
             w = normalize_for_pdf(item)
 
-            title = w.get("merch_headline", "Untitled")
+            #title = w.get("merch_headline", "Untitled")
+            raw_title = w.get("merch_headline", "Untitled")
+
+            # keep only first line / headline
+            title = raw_title.split("\n")[0].strip()
+
+            # remove accidental long sentence bleed
+            title = title.split(". ")[0].strip() if len(title) > 80 else title
+
             insight = w.get("core_insight", "")
             priority = w.get("execution_priority", "")
             risk = w.get("risk_level", "")
 
             email_html += f"""
-            <li style='margin-bottom:14px;'>
-                <strong>{html.escape(title)}</strong><br>
-                <span style="color:#444;">{html.escape(insight)}</span><br>
-                <span style="font-size:13px; color:#666;">
-                    Priority: {html.escape(priority or 'Monitor')}
-                    • Risk: {html.escape(risk or 'Unknown')}
-                </span>
+            <li style='margin-bottom:8px;'>
+                {html.escape(title)}
             </li>
             """
+
+            #email_html += f"""
+            #<li style='margin-bottom:14px;'>
+            #    <strong>{html.escape(title)}</strong><br>
+            #    <span style="color:#444;">{html.escape(insight)}</span><br>
+            #    <span style="font-size:13px; color:#666;">
+            #        Priority: {html.escape(priority or 'Monitor')}
+            #        • Risk: {html.escape(risk or 'Unknown')}
+            #    </span>
+            #</li>
+            #"""
 
         email_html += "</ul>"
 
