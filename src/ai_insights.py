@@ -312,7 +312,7 @@ def generate_tier2_email(
     total_raw = total_raw_trends or len(trends)
     total_qualified = total_trends_qualified or len(trends)
 
-    html = f"""
+    email_html = f"""
     <html>
     <body style="font-family: Arial, sans-serif; line-height:1.55; color:#222; max-width:700px; margin:auto;">
 
@@ -344,7 +344,7 @@ def generate_tier2_email(
 
         product_html = "".join([f"<li>{p}</li>" for p in products])
 
-        html += f"""
+        email_html += f"""
         <h2 style="margin-bottom:8px;">🚀 Priority Launch Today</h2>
 
         <div style="border:1px solid #ddd; padding:18px; margin-bottom:28px; border-radius:8px;">
@@ -365,12 +365,12 @@ def generate_tier2_email(
         """
 
         if niche_variations:
-            html += "<p><b>Niche Variations</b></p>"
+            email_html += "<p><b>Niche Variations</b></p>"
 
             for nv in niche_variations[:3]:
                 niche_name = nv.get("niche_name", "")
                 subtext = nv.get("subtext", "")
-                html += f"""
+                email_html += f"""
                 <p style="margin:0 0 10px 0;">
                 <b>{niche_name}</b><br>
                 {subtext}
@@ -379,18 +379,18 @@ def generate_tier2_email(
 
         diff = top.get("differentiation_strategy", "")
         if diff:
-            html += f"""
+            email_html += f"""
             <p><b>Differentiation Strategy</b><br>{diff}</p>
             """
 
-        html += "</div>"
+        email_html += "</div>"
 
     # ==================================================
     # TRENDS 2 + 3 (Lighter Detail)
     # ==================================================
     if len(normalized_trends) > 1:
 
-        html += "<h2 style='margin-bottom:12px;'>🔥 Other Strong Opportunities</h2>"
+        email_html += "<h2 style='margin-bottom:12px;'>🔥 Other Strong Opportunities</h2>"
 
         for idx, trend in enumerate(normalized_trends[1:3], start=2):
 
@@ -403,7 +403,7 @@ def generate_tier2_email(
 
             product_html = "".join([f"<li>{p}</li>" for p in products])
 
-            html += f"""
+            email_html += f"""
             <div style="border-top:1px solid #eee; padding-top:16px; margin-bottom:20px;">
 
             <h3>{idx}. {title}</h3>
@@ -430,7 +430,7 @@ def generate_tier2_email(
         total_watch = watchlist_total or shown_watch
         remaining_watch = max(0, total_watch - shown_watch)
 
-        html += """
+        email_html += """
         <hr style="margin:28px 0;">
         <h2>👀 Top Watch List Signals</h2>
         <ul style="padding-left:20px;">
@@ -449,7 +449,7 @@ def generate_tier2_email(
             priority = w.get("execution_priority", "")
             risk = w.get("risk_level", "")
 
-            html += f"""
+            email_html += f"""
             <li style='margin-bottom:14px;'>
                 <strong>{html.escape(title)}</strong><br>
                 <span style="color:#444;">{html.escape(insight)}</span><br>
@@ -460,10 +460,10 @@ def generate_tier2_email(
             </li>
             """
 
-        html += "</ul>"
+        email_html += "</ul>"
 
         if remaining_watch > 0:
-            html += f"""
+            email_html += f"""
             <p style="font-size:14px; color:#555; margin-top:10px;">
             + {remaining_watch} more emerging watch list opportunities inside today’s Builder PDF.
             </p>
@@ -472,7 +472,7 @@ def generate_tier2_email(
     # ==================================================
     # PDF BLOCK
     # ==================================================
-    html += """
+    email_html += """
     <div style="background:#f8f8f8; border:1px solid #e5e5e5; padding:18px; margin:30px 0; border-radius:8px;">
 
     <p style="margin-top:0;"><b>📎 Today’s Builder PDF Included</b></p>
@@ -492,7 +492,7 @@ def generate_tier2_email(
     # ==================================================
     # OUTRO
     # ==================================================
-    html += f"""
+    email_html += f"""
     <p>{outro}</p>
 
     <p style="margin-top:28px; font-style:italic; color:#555;">
@@ -504,7 +504,7 @@ def generate_tier2_email(
     </html>
     """
 
-    return html
+    return email_html
 
 
 # Map trend signal levels to emojis
