@@ -1134,10 +1134,18 @@ def run():
         elif "medium" in risk:
             risk_penalty = 5
 
+        headline = (
+            enrichment.get("merch_headline")
+            or trend.get("title", "")
+        )
+
+        generic_penalty = generic_phrase_penalty(headline)
+
         trend["final_rank_score"] = (
             weighted_score(trend)
             + signal_bonus
             - risk_penalty
+            - generic_penalty
         )
 
         enriched_trends.append(trend)
@@ -1344,7 +1352,7 @@ def run():
     #    else:
     #        return f"<span class='badge badge-low'>{score}</span>"
 
-    #trend_counter = 1
+    
 
     #def signal_badge(label):
     #    level = label.lower()
@@ -1359,7 +1367,7 @@ def run():
     #        cls = "badge-neutral"
 
     #    return f"<span class='badge {cls}'>{label}</span>"
-
+    trend_counter = 1
     # --------------------------
     # HEAVY ENRICHED TRENDS
     # --------------------------
