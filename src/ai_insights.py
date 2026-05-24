@@ -2,7 +2,6 @@ import os
 from openai import OpenAI
 import html
 import json
-#from utils import normalize_for_pdf, normalize_watchlist_for_pdf, extract_display_signals, normalize_hml
 from utils import normalize_for_pdf, extract_display_signals, normalize_hml
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -302,7 +301,6 @@ def generate_tier2_email(
     Cleaner premium layout + top deep dive + watchlist + PDF reminder.
     """
 
-    #from utils import normalize_for_pdf, normalize_watchlist_for_pdf
     from utils import normalize_for_pdf
     
     normalized_trends = [normalize_for_pdf(t) for t in trends]
@@ -351,7 +349,8 @@ def generate_tier2_email(
 
         <h3 style="margin-top:0;">1. {title}</h3>
 
-        <p><b>Risk Level:</b> {risk}<br>
+        <p><b>Risk Level:</b> {risk}</p>
+        
         <b>Execution Priority:</b> {priority}</p>
 
         <p><b>Why It Sells</b><br>{insight}</p>
@@ -410,7 +409,8 @@ def generate_tier2_email(
 
             <p><b>Why It Sells</b><br>{insight}</p>
 
-            <p><b>Risk Level:</b> {risk}<br>
+            <p><b>Risk Level:</b> {risk}</p>
+
             <b>Execution Priority:</b> {priority}</p>
 
             <p><b>Best Products</b></p>
@@ -436,15 +436,10 @@ def generate_tier2_email(
         <ul style="padding-left:20px;">
         """
 
-        #for item in watchlist:
-        #    w = normalize_watchlist_for_pdf(item)
-        #    title = w.get("merch_headline", "Untitled")
-        #    html += f"<li style='margin-bottom:8px;'>{title}</li>"
 
         for item in watchlist:
             w = normalize_for_pdf(item)
 
-            #title = w.get("merch_headline", "Untitled")
             raw_title = w.get("merch_headline", "Untitled")
 
             # keep only first line / headline

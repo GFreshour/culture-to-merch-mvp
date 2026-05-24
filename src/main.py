@@ -17,14 +17,10 @@ from trend_memory import dedupe_trends, remove_recent_trends
 from ai_insights import (
     generate_tier1_email,
     generate_tier2_email,
-    format_audience_size,
     signal_badge,
     score_badge,
-    normalize_level,
-    format_percent,
-    outlook_interpretation
+    format_percent
 )
-#from utils import normalize_for_pdf, normalize_watchlist_for_pdf, extract_display_signals, normalize_hml
 from utils import normalize_for_pdf, extract_display_signals, normalize_hml
 
 #from trends_reddit import get_reddit_trends
@@ -385,6 +381,45 @@ Instructions:
 11. **execution_priority**
     - Should this be tested immediately, batch tested, or monitored?
 
+IMPORTANT SIGNAL SCORING CONTEXT:
+
+This trend has ALREADY passed multiple commercial filtering stages
+and is competing against other qualified merch opportunities.
+
+You must score signals RELATIVE TO OTHER QUALIFIED TRENDS,
+not in isolation.
+
+The Top 5 trends should visibly outperform Watchlist trends.
+
+Scoring guidance:
+- High = unusually strong compared to typical daily trends
+- Medium = viable but not dominant
+- Low = weak, niche, unstable, or difficult to monetize
+
+Do NOT default everything to Medium.
+
+Most trends should contain a mix of:
+- High + Medium
+OR
+- Medium + Low
+
+Only exceptional trends should receive multiple High ratings.
+
+Signal differentiation is extremely important.
+The scores should help explain WHY this trend ranked highly.
+
+Examples:
+- A trend with broad meme remixability may earn HIGH memetic_variations
+  even if search volume is only Medium.
+
+- A niche fandom trend may have HIGH buyer depth
+  but LOW cross-platform spread.
+
+- A trend with strong emotional identity signaling may have HIGH merch_potential
+  despite Medium hashtag growth.
+
+Use realistic commercial judgment, not safe averaging.
+
 12. **trend_signals**
     - Assign realistic High / Medium / Low scores per category.
     - Categories:
@@ -399,43 +434,72 @@ Instructions:
     - Avoid all Medium scores; be decisive.
 
 13. **ai_artwork_prompt**
-   - Create a platform-agnostic AI artwork generation prompt optimized for merchandise design.
-   - Focus ONLY on the printable artwork/design itself.
+   - Create a platform-agnostic AI artwork generation prompt optimized specifically for PRINT-ON-DEMAND merchandise artwork.
+
+   - The prompt should describe ONLY the printable graphic/design itself.
+
+   - The generated artwork must work cleanly on:
+     - transparent backgrounds
+     - white backgrounds
+     - dark shirts
+     - light shirts
+
    - DO NOT describe:
      - t-shirts
      - hoodies
      - mockups
      - models
      - product photography
-     - backgrounds outside the artwork composition
+     - studio scenes
+     - environmental backgrounds
+     - cinematic scenes
 
-   - The artwork prompt MUST align with the previously generated:
+   - The artwork should feel intentionally designed for merch printing, not like a random AI illustration.
+
+   - The artwork prompt MUST align with:
      - buyer_psychology
      - target_audience
      - design_direction
      - niche_variations
 
-   - The visual direction should feel like a direct execution of the merch strategy above.
+   - The visual direction should feel like a direct commercial execution of the merch strategy above.
 
    - Include:
      - artistic style
      - composition
      - typography style
+     - line weight
      - textures
      - color palette
      - mood
      - visual hierarchy
+     - print aesthetic
 
    - Optimize for:
      - screen print aesthetics
      - POD friendliness
      - strong thumbnail visibility
-     - emotionally recognizable visuals
+     - emotional recognition
+     - simplified readable silhouettes
+     - clean edge separation
+     - high print contrast
+
+   - Prefer:
+     - isolated subjects
+     - centered compositions
+     - vector-friendly styling
+     - limited but impactful color palettes
+
+   - Avoid:
+     - cluttered scenes
+     - overly detailed realism
+     - busy backgrounds
+     - tiny illegible typography
 
    - Keep under 120 words.
 
    - Example quality:
-     "Distressed retro illustration of an exhausted raccoon drinking gas station coffee, muted olive and cream palette, vintage halftone texture, centered composition, thick collegiate typography, simplified vector shapes, worn screen print aesthetic, ironic sleep-deprived mood, dark background, high contrast"
+     "Distressed retro illustration of an exhausted raccoon drinking gas station coffee, muted olive and cream palette, vintage halftone texture, centered composition, thick collegiate typography, simplified vector shapes, isolated artwork with transparent background compatibility, worn screen print aesthetic, ironic sleep-deprived mood, high contrast"
 
 Additional guidance:
 
@@ -494,88 +558,6 @@ Additional guidance:
 
 - Return JSON only.
 """.strip()
-
-# ---------------- PROMPT (Watchlist / Rapid Tier 2 Enrichment) ----------------
-#def build_watchlist_prompt(trend):
-#    """
-#    Builds the AI prompt for Watchlist / rapid Tier 2 enrichment.
-#    Returns strict JSON but with lighter detail than Top 5.
-#    """
-#    clean_title = clean_text_for_prompt(trend['title'])
-#
-#    source = trend.get('source', 'unknown').capitalize()
-#
-#    return f"""
-#You are a merch analyst providing a quick evaluation of a trend for potential print-on-demand products.
-#
-#Trend ({source}):
-#"{clean_title}"
-#
-#Return STRICT JSON ONLY, using this schema:
-#
-#{{
-#  "merch_headline": "",
-#  "core_insight": "",
-#  "primary_product": "",
-#  "secondary_products": [],
-#  "design_suggestion": "",
-#  "angle_variations": ["", ""],
-#  "risk_level": "",
-#  "trend_signals": {{
-#      "merch_potential": "",
-#      "hashtag_growth": "",
-#      "memetic_variations": "",
-#      "cross_platform_spread": "",
-#      "search_volume_mentions": "",
-#      "merch_branding": "",
-#      "rationale": "",
-#      "examples": []
-#  }}
-#}}
-#
-#Instructions:
-#
-#1. **merch_headline**
-#   - Create ONE short, punchy slogan (3–7 words max).
-#   - Compress the Reddit title into a sellable hook.
-#   - Must work on a shirt, mug, or sticker.
-#
-#2. **core_insight**
-#   - Briefly explain why this trend resonates.
-#   - Identify the human or emotional connection that drives interest.
-#
-#3. **primary_product**
-#   - ONE product most likely to convert quickly.
-#
-#4. **secondary_products**
-#   - Up to 2 logical complementary products.
-#
-#5. **design_suggestion**
-#   - Short, actionable style/layout advice (2–3 sentences max).
-#   - Include colors, fonts, and imagery if relevant.
-#
-#6. **angle_variations**
-#   - Provide 2 alternate slogans, angles, or spin-offs for merch.
-#   - Should feel distinct and monetizable.
-#
-#7. **risk_level**
-#   - Low / Medium / High commercial risk, with a short justification.
-#   - Be realistic; don’t sugarcoat weak trends.
-#
-#8. **trend_signals**
-#   - Assign realistic High / Medium / Low scores per category:
-#     - merch_potential, hashtag_growth, memetic_variations,
-#       cross_platform_spread, search_volume_mentions, merch_branding
-#   - Provide concise rationale for each score.
-#   - Include examples if applicable.
-#   - Avoid generic “all Medium” scores; be decisive.
-#
-#Additional guidance:
-#- Keep it concise, tactical, and commercially actionable.
-#- Avoid vague phrases or filler.
-#- Return JSON only — no commentary or extra text.
-#""".strip()
-
 
 def enrich_top5_with_ai(trend):
     prompt = build_ai_prompt(trend)
@@ -968,11 +950,6 @@ def run():
     # ----------------------------
     # 2 Filter High / Medium
     # ----------------------------
-    trends = [
-        t for t in trends
-        if t.get("viability") in ["High", "Medium"]
-    ]
-
     before_filter = len(trends)
 
     trends = [
@@ -980,11 +957,12 @@ def run():
         if t.get("viability") in ["High", "Medium"]
     ]
 
-    print(f"📉 Removed {before_filter - len(trends)} trends during viability filter")
-    
-    log["viability_removed"] = (
-        before_filter - len(trends)
-    )
+    removed_count = before_filter - len(trends)
+
+    print(f"📉 Removed {removed_count} trends during viability filter")
+
+    log["viability_removed"] = removed_count
+
     # ----------------------------
     # 3 Sort by viability
     # ----------------------------
@@ -1206,119 +1184,6 @@ def run():
     print(f"📊 Final Top5 size: {len(top5)}")
     print(f"📊 Final Watchlist size: {len(watchlist)}")
 
-    # ----------------------------
-    # 7 Stratify into tiers
-    # ----------------------------
-
-    #top5 = []
-    #watchlist = []
-
-    # ⚡ TEST_MODE — only keep 1 result
-    #TEST_TOP5_LIMIT = 1 if TEST_MODE else 5
-    #TEST_WATCHLIST_LIMIT = 1 if TEST_MODE else 15
-
-
-    # --------------------------------
-    # AI ENRICHMENT — TOP 5 (DEEP BUILDER MODE)
-    # --------------------------------
-
-    #print("🧠 Running Deep Enrichment on Top 5...")
-
-    #for trend in trends:
-
-    #    if len(top5) >= TEST_TOP5_LIMIT:
-    #        break
-
-    #    print(f"🔥 Deep Enriching Top Trend {len(top5)+1}...")
-
-    #    enrichment = enrich_top5_with_ai(trend)
-
-    #    if not enrichment:
-    #        print(f"⚠️ Skipping failed Top5 trend: {trend['title']}")
-    #        continue
-
-    #    trend["ai_enrichment"] = enrichment
-    #    trend["report_tier"] = "Top 5"
-
-    #    top5.append(trend)
-
-    #    print(f"✅ Added to Top5: {trend['title']}")
-
-
-    # --------------------------------
-    # LIGHT ENRICHMENT — WATCHLIST
-    # --------------------------------
-
-    #print("👀 Running Light Enrichment on Watchlist...")
-
-    #for trend in trends:
-
-        # Skip anything already used in Top5
-    #    if trend in top5:
-    #        continue
-
-    #    if len(watchlist) >= TEST_WATCHLIST_LIMIT:
-    #        break
-
-    #    idx = len(watchlist) + 1
-    #    print(f"👀 Light Enriching Watchlist Trend {idx}...")
-
-    #    light_prompt = build_watchlist_prompt(trend)
-
-    #    try:
-    #        response = client.chat.completions.create(
-    #            model="gpt-4o-mini",
-    #            messages=[{"role": "user", "content": light_prompt}],
-    #            temperature=0.5
-    #        )
-
-    #        raw_text = response.choices[0].message.content.strip()
-
-    #        # Strip code fences
-    #        if raw_text.startswith("```"):
-    #            raw_text = raw_text.replace("```json", "").replace("```", "").strip()
-
-    #        parsed = json.loads(raw_text)
-
-    #    except Exception as e:
-    #        print(f"⚠️ Watchlist enrichment failed for '{trend['title']}': {e}")
-    #        continue
-
-    #    trend["ai_enrichment"] = parsed
-    #    trend["report_tier"] = "Watchlist"
-
-    #    watchlist.append(trend)
-
-    #    print(f"✅ Watchlist enrichment attached to: {trend['title']}")
-
-    # --------------------------------
-    # BACKFILL WATCHLIST IF TOO SMALL
-    # --------------------------------
-
-    #WATCHLIST_TARGET = 15
-
-    #if len(watchlist) < WATCHLIST_TARGET:
-
-    #    needed = WATCHLIST_TARGET - len(watchlist)
-
-    #    print(f"⚠️ Watchlist short by {needed}. Backfilling...")
-
-    #    used_titles = {t["title"] for t in top5 + watchlist}
-
-    #    for trend in trends:
-
-    #        if trend["title"] in used_titles:
-    #            continue
-
-    #        trend["report_tier"] = "Watchlist"
-    #        watchlist.append(trend)
-
-    #        print(f"➕ Backfilled: {trend['title']}")
-
-    #        if len(watchlist) >= WATCHLIST_TARGET:
-    #            break
-
-    #print(f"📊 Final watchlist size: {len(watchlist)}")
     
     log["final_top5"] = len(top5)
     log["final_watchlist"] = len(watchlist)
@@ -1338,11 +1203,6 @@ def run():
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(final_trends, f, indent=2, ensure_ascii=False)
 
-    # Normalize trends for email (merge AI enrichment)
-    #email_trends = [
-    #    normalize_trend_for_email(t)
-    #    for t in top5
-    #]
 
     print("📬 Sending Tier 1 email (with NO attachment)…")
     tier1_email_body = generate_tier1_email(
@@ -1371,8 +1231,6 @@ def run():
     if len(tier2_email_body) < 300:
         raise ValueError("Tier 1 email body unexpectedly short")
 
-    #pdf_trends = [normalize_for_pdf(t) for t in top5]
-    #pdf_watchlist = [normalize_watchlist_for_pdf(t) for t in watchlist]
 
     pdf_trends = [normalize_for_pdf(t) for t in top5]
     pdf_watchlist = [normalize_for_pdf(t) for t in watchlist]
@@ -1455,52 +1313,52 @@ def run():
         "</div>"
     ]
 
-    def pdf_signal_badge(level):
-        try:
-            level = float(level)
-        except:
-            level = 0
+    #def pdf_signal_badge(level):
+    #    try:
+    #        level = float(level)
+    #    except:
+    #        level = 0
 
-        # Convert numeric confidence → label
-        if level >= 80:
-            label = "High"
-            color = "#16a34a"  # green
-        elif level >= 60:
-            label = "Medium"
-            color = "#f59e0b"  # amber
-        else:
-            label = "Low"
-            color = "#dc2626"  # red
+    #    # Convert numeric confidence → label
+    #    if level >= 80:
+    #        label = "High"
+    #        color = "#16a34a"  # green
+    #    elif level >= 60:
+    #        label = "Medium"
+    #        color = "#f59e0b"  # amber
+    #    else:
+    #        label = "Low"
+    #        color = "#dc2626"  # red
 
-        return f"<span style='color:{color}; font-weight:600'>{label}</span>"
+    #    return f"<span style='color:{color}; font-weight:600'>{label}</span>"
 
-    def pdf_score_badge(score):
-        try:
-            score = int(score)
-        except:
-            return "<span class='badge badge-neutral'>—</span>"
-        if score >= 75:
-            return f"<span class='badge badge-high'>{score}</span>"
-        elif score >= 50:
-            return f"<span class='badge badge-medium'>{score}</span>"
-        else:
-            return f"<span class='badge badge-low'>{score}</span>"
+    #def pdf_score_badge(score):
+    #    try:
+    #        score = int(score)
+    #    except:
+    #        return "<span class='badge badge-neutral'>—</span>"
+    #    if score >= 75:
+    #        return f"<span class='badge badge-high'>{score}</span>"
+    #    elif score >= 50:
+    #        return f"<span class='badge badge-medium'>{score}</span>"
+    #    else:
+    #        return f"<span class='badge badge-low'>{score}</span>"
 
-    trend_counter = 1
+    #trend_counter = 1
 
-    def signal_badge(label):
-        level = label.lower()
+    #def signal_badge(label):
+    #    level = label.lower()
 
-        if level == "high":
-            cls = "badge-high"
-        elif level == "medium":
-            cls = "badge-medium"
-        elif level == "low":
-            cls = "badge-low"
-        else:
-            cls = "badge-neutral"
+    #    if level == "high":
+    #        cls = "badge-high"
+    #    elif level == "medium":
+    #        cls = "badge-medium"
+    #    elif level == "low":
+    #        cls = "badge-low"
+    #    else:
+    #        cls = "badge-neutral"
 
-        return f"<span class='badge {cls}'>{label}</span>"
+    #    return f"<span class='badge {cls}'>{label}</span>"
 
     # --------------------------
     # HEAVY ENRICHED TRENDS
@@ -1677,12 +1535,28 @@ def run():
             html_lines.append("<p><strong>Secondary Products:</strong> "
                             f"{html.escape(secondary or '—')}</p>")
 
-            html_lines.append("<p><strong>Design Suggestion:</strong> "
-                            f"{html.escape(t.get('design_suggestion','—'))}</p>")
+            design = t.get("design_direction") or "—"
 
-            angle_variations = ", ".join(t.get("angle_variations", []))
-            html_lines.append("<p><strong>Angle Variations:</strong> "
-                            f"{html.escape(angle_variations or '—')}</p>")
+            html_lines.append(
+                "<p><strong>Design Suggestion:</strong> "
+                f"{html.escape(design)}</p>"
+            )
+
+            niche_variations = t.get("niche_variations") or []
+
+            if niche_variations:
+                angle_text = ", ".join(
+                    nv.get("niche_name", "")
+                    for nv in niche_variations[:3]
+                    if nv.get("niche_name")
+                )
+            else:
+                angle_text = "—"
+
+            html_lines.append(
+                "<p><strong>Angle Variations:</strong> "
+                f"{html.escape(angle_text)}</p>"
+            )
 
             html_lines.append("<p><strong>Risk Level:</strong> "
                             f"{html.escape(t.get('risk_level','Not specified'))}</p>")
