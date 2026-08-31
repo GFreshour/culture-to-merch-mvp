@@ -174,13 +174,17 @@ def get_reddit_trends_apify():
             #    or 0
             #)
 
-            print(
-                f"REDDIT: {title[:60]} | "
-                f"sub={subreddit} | "
-                f"votes={score} | "
-                f"comments={item.get('numberOfComments', 0)} | "
-                f"body_chars={len(item.get('body') or '')}"
-            )
+            print("\n========== REDDIT DEBUG ==========")
+            print("TITLE:", title)
+            print("COMMUNITY:", item.get("communityName"))
+            print("UPVOTES:", item.get("upVotes"))
+            print("UPVOTE RATIO:", item.get("upVoteRatio"))
+            print("COMMENTS:", item.get("numberOfComments"))
+            print("CREATED:", item.get("createdAt"))
+            print("BODY:", repr((item.get("body") or "")[:300]))
+            print("DATA TYPE:", item.get("dataType"))
+            print("ALL KEYS:", list(item.keys()))
+            print("==================================\n")
 
             trends.append({
                 "title": title,
