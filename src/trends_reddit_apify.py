@@ -149,23 +149,53 @@ def get_reddit_trends_apify():
                 continue
 
             subreddit = (
-                item.get("subreddit")
-                or item.get("communityName")
-                or item.get("source")
+                item.get("communityName")
+                or item.get("subreddit")
                 or ""
             )
+            
+            #subreddit = (
+            #    item.get("subreddit")
+            #    or item.get("communityName")
+            #    or item.get("source")
+            #    or ""
+            #)
 
             score = (
-                item.get("score")
+                item.get("upVotes")
+                or item.get("score")
                 or item.get("upvotes")
                 or 0
+            )
+            
+            #score = (
+            #    item.get("score")
+            #    or item.get("upvotes")
+            #    or 0
+            #)
+
+            print(
+                f"REDDIT: {title[:60]} | "
+                f"sub={subreddit} | "
+                f"votes={score} | "
+                f"comments={item.get('numberOfComments', 0)} | "
+                f"body_chars={len(item.get('body') or '')}"
             )
 
             trends.append({
                 "title": title,
                 "subreddit": subreddit,
-                "score": score
+                "score": item.get("upVotes") or item.get("score") or 0,
+                "comment_count": item.get("numberOfComments") or 0,
+                "post_body": (item.get("body") or "").strip(),
+                "created_at": item.get("createdAt") or "",
+                "source": "reddit"
             })
+            #trends.append({
+            #    "title": title,
+            #    "subreddit": subreddit,
+            #    "score": score
+            #})
 
         print(f"📊 Apify Reddit trends fetched: {len(trends)}")
         return trends
