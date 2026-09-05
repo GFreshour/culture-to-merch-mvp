@@ -1,9 +1,10 @@
 # trends_reddit_apify.py
-# Uses: trudax/reddit-scraper-lite
-# Goal: Drop-in Reddit source for your merch trend pipeline
+# Uses: themineworks/reddit-scraper
+# Goal: High-evidence Reddit source for Merch Scout trend pipeline
 
 import os
 import re
+from typing import List, Dict, Any
 from apify_client import ApifyClient
 
 SUBREDDITS = [
@@ -19,13 +20,13 @@ SUBREDDITS = [
     "parenting"
 ]
 
-POST_LIMIT = 15
+POSTS_PER_SUBREDDIT = 5  # Keeps daily pull ~50 posts to control Apify costs
 
 
 # -----------------------------------
-# SAME FILTERING YOU ALREADY USE
+# RULE-BASED PRE-FILTER
 # -----------------------------------
-def is_valid_trend(title: str):
+def is_valid_trend(title: str) -> bool:
     if not title:
         return False
 
@@ -75,72 +76,44 @@ def is_valid_trend(title: str):
 
 
 # -----------------------------------
-# MAIN FUNCTION
+# MAIN SCRAPER FUNCTION
 # -----------------------------------
-def get_reddit_trends_apify():
+def get_reddit_trends_apify() -> List[Dict[str, Any]]:
+    # Uses your existing environment variable
     token = os.getenv("APIFY_TOKEN")
 
     if not token:
-        print("⚠️ Missing APIFY_TOKEN")
+        print("⚠️ Missing APIFY_TOKEN environment variable")
         return []
 
     client = ApifyClient(token)
 
-    trends = []
+    run_input = {
+        "mode": "subreddit",
+        "subreddits": SUBREDDITS,
+        "sortBy": "hot",
+        "maxPosts": POSTS_PER_SUBREDDIT,
+        "includeComments": False
+    }
+
+    print(f"🚀 Pulling Reddit trends via themineworks/reddit-scraper for {len(SUBREDDITS)} subreddits...")
 
     try:
-        print("🚀 Pulling Reddit trends from Apify...")
-
-        # Build subreddit URLs
-        start_urls = []
-        for sub in SUBREDDITS:
-            start_urls.append(
-                {"url": f"https://www.reddit.com/r/{sub}/hot/"}
-            )
-
-        run_input = {
-            "startUrls": [
-                {"url": "https://www.reddit.com/r/funny/hot/"},
-                {"url": "https://www.reddit.com/r/memes/hot/"},
-                {"url": "https://www.reddit.com/r/showerthoughts/hot/"},
-                {"url": "https://www.reddit.com/r/wholesomememes/hot/"},
-                {"url": "https://www.reddit.com/r/AskReddit/hot/"},
-                {"url": "https://www.reddit.com/r/facepalm/hot/"},
-                {"url": "https://www.reddit.com/r/NotTheOnion/hot/"},
-                {"url": "https://www.reddit.com/r/antiwork/hot/"},
-                {"url": "https://www.reddit.com/r/gaming/hot/"},
-                {"url": "https://www.reddit.com/r/parenting/hot/"}
-            ],
-
-            "sort": "hot",
-            "skipComments": True,
-            "maxComments": 0,
-            "skipCommunity": True,
-            "includeNSFW": False,
-
-            "maxItems": 50,
-            "maxPostCount": 8,
-
-            "proxy": {
-                "useApifyProxy": True
-            }
-        }
-
-        run = client.actor("trudax/reddit-scraper-lite").call(
-            run_input=run_input
-        )
-
+        run = client.actor("themineworks/reddit-scraper").call(run_input=run_input)
         dataset = client.dataset(run["defaultDatasetId"])
 
-        for item in dataset.iterate_items():
+        trends = []
 
-            # Helpful if actor field names vary
-            title = (
-                item.get("title")
-                or item.get("postTitle")
-                or item.get("name")
-                or ""
-            ).strip()
+        for item in dataset.iterate_items():
+            # Skip non-post summary/info objects returned by actor
+            if item.get("_type") in ["summary", "info"]:
+                continue
+
+            # Skip stickied/pinned moderator posts
+            if item.get("is_pinned", False):
+                continue
+
+            title = (item.get("title") or "").strip()
 
             if not title:
                 continue
@@ -148,58 +121,33 @@ def get_reddit_trends_apify():
             if not is_valid_trend(title):
                 continue
 
-            subreddit = (
-                item.get("communityName")
-                or item.get("subreddit")
-                or ""
-            )
-            
-            #subreddit = (
-            #    item.get("subreddit")
-            #    or item.get("communityName")
-            #    or item.get("source")
-            #    or ""
-            #)
+            subreddit = item.get("subreddit") or ""
+            score = item.get("score") or 0
+            upvote_ratio = item.get("upvote_ratio") or 0.0
+            comment_count = item.get("num_comments") or 0
+            post_body = (item.get("selftext") or "").strip()
+            url = item.get("permalink") or item.get("url") or ""
 
-            score = (
-                item.get("upVotes")
-                or item.get("score")
-                or item.get("upvotes")
-                or 0
-            )
-            
-            #score = (
-            #    item.get("score")
-            #    or item.get("upvotes")
-            #    or 0
-            #)
-
-            print("\n========== REDDIT DEBUG ==========")
+            # Debug printout so you can verify live evidence in logs
+            print("\n========== REDDIT EVIDENCE ==========")
             print("TITLE:", title)
-            print("COMMUNITY:", item.get("communityName"))
-            print("UPVOTES:", item.get("upVotes"))
-            print("UPVOTE RATIO:", item.get("upVoteRatio"))
-            print("COMMENTS:", item.get("numberOfComments"))
-            print("CREATED:", item.get("createdAt"))
-            print("BODY:", repr((item.get("body") or "")[:300]))
-            print("DATA TYPE:", item.get("dataType"))
-            print("ALL KEYS:", list(item.keys()))
-            print("==================================\n")
+            print("SUBREDDIT:", subreddit)
+            print("SCORE:", score)
+            print("UPVOTE RATIO:", upvote_ratio)
+            print("COMMENTS:", comment_count)
+            print("BODY:", repr(post_body[:200]))
+            print("=====================================\n")
 
             trends.append({
                 "title": title,
                 "subreddit": subreddit,
-                "score": item.get("upVotes") or item.get("score") or 0,
-                "comment_count": item.get("numberOfComments") or 0,
-                "post_body": (item.get("body") or "").strip(),
-                "created_at": item.get("createdAt") or "",
+                "score": score,
+                "upvote_ratio": upvote_ratio,
+                "comment_count": comment_count,
+                "post_body": post_body,
+                "url": url,
                 "source": "reddit"
             })
-            #trends.append({
-            #    "title": title,
-            #    "subreddit": subreddit,
-            #    "score": score
-            #})
 
         print(f"📊 Apify Reddit trends fetched: {len(trends)}")
         return trends
@@ -207,3 +155,9 @@ def get_reddit_trends_apify():
     except Exception as e:
         print(f"⚠️ Apify Reddit failed: {e}")
         return []
+
+
+if __name__ == "__main__":
+    # Test script directly
+    results = get_reddit_trends_apify()
+    print(f"\nCompleted standalone test: {len(results)} posts returned.")
