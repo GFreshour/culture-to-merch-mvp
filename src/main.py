@@ -807,41 +807,64 @@ def run():
     print("☕ Fetching trends from Reddit and TikTok…")
     #raw_reddit_trends = get_reddit_trends(client)
     
+    # --- REDDIT FETCHING (APIFY WITH RSS FALLBACK) ---
+    raw_reddit_trends = []
+
     try:
         raw_reddit_trends = get_reddit_trends_apify()
-
         log["apify_count"] = len(raw_reddit_trends)
-
         print(f"📊 Apify returned: {len(raw_reddit_trends)}")
-
-        if not raw_reddit_trends:
-            print("🔁 Apify empty — falling back to RSS")
-
-            log["reddit_rss_used"] = True
-
-            raw_reddit_trends = get_reddit_trends_rss()
-
-            log["reddit_rss_count"] = len(raw_reddit_trends)
-
-            print(f"📊 Reddit RSS returned: {len(raw_reddit_trends)}")
-
     except Exception as e:
         print(f"⚠️ Apify failed completely: {e}")
-
         log["apify_failed"] = True
 
+    # Fall back to RSS if Apify failed or returned an empty list
+    if not raw_reddit_trends:
+        print("🔁 Apify empty or failed — falling back to RSS")
         try:
             log["reddit_rss_used"] = True
-
             raw_reddit_trends = get_reddit_trends_rss()
-
             log["reddit_rss_count"] = len(raw_reddit_trends)
-
             print(f"📊 Reddit RSS returned: {len(raw_reddit_trends)}")
-
-        except Exception:
+        except Exception as e:
+            print(f"⚠️ Reddit RSS failed completely: {e}")
             log["reddit_rss_failed"] = True
             raw_reddit_trends = []
+    #try:
+    #    raw_reddit_trends = get_reddit_trends_apify()
+
+    #    log["apify_count"] = len(raw_reddit_trends)
+
+    #    print(f"📊 Apify returned: {len(raw_reddit_trends)}")
+
+    #    if not raw_reddit_trends:
+    #        print("🔁 Apify empty — falling back to RSS")
+
+    #        log["reddit_rss_used"] = True
+
+    #        raw_reddit_trends = get_reddit_trends_rss()
+
+    #        log["reddit_rss_count"] = len(raw_reddit_trends)
+
+    #        print(f"📊 Reddit RSS returned: {len(raw_reddit_trends)}")
+
+    #except Exception as e:
+    #    print(f"⚠️ Apify failed completely: {e}")
+
+    #    log["apify_failed"] = True
+
+    #    try:
+    #        log["reddit_rss_used"] = True
+
+    #        raw_reddit_trends = get_reddit_trends_rss()
+
+    #        log["reddit_rss_count"] = len(raw_reddit_trends)
+
+    #        print(f"📊 Reddit RSS returned: {len(raw_reddit_trends)}")
+
+    #    except Exception:
+    #        log["reddit_rss_failed"] = True
+    #        raw_reddit_trends = []
     
     try:
         trends_tiktok = get_tiktok_trends()
