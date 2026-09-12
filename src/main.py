@@ -703,19 +703,55 @@ def enrich_top5_with_ai(trend):
     import re
 
     def safe_json_load(raw_text):
+        """
+        Progressive parser. Tries strict JSON first, then applies
+        increasingly aggressive repairs for common gpt-4o-mini defects.
+
+        Repairs applied, in order:
+          1. Strip markdown code fences (in case caller didn't)
+          2. Remove trailing commas before } or ]
+          3. Insert missing commas between a string value and the next key,
+             e.g.  "...text" \n "next_key": ...  →  "...text", \n "next_key": ...
+          4. Replace smart quotes that sneak in from models
+        """
+        # Attempt 1: strict
         try:
             return json.loads(raw_text)
-        except:
-            # Remove trailing commas before } or ]
-            cleaned = re.sub(r",\s*([}\]])", r"\1", raw_text)
-            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            pass
+
+        cleaned = raw_text
+
+        # Repair 1: strip code fences if still present
+        cleaned = cleaned.replace("```json", "").replace("```", "").strip()
+
+        # Repair 2: remove trailing commas before } or ]
+        cleaned = re.sub(r",\s*([}\]])", r"\1", cleaned)
+
+        # Repair 3: insert missing comma between a string value and next key.
+        # Matches:  "..." (whitespace) "key":   →  "...", (whitespace) "key":
+        # Only triggers when previous line ends with `"` and next line
+        # starts with `"key":` — that's the exact defect we saw.
+        cleaned = re.sub(
+            r'("\s*)\n(\s*"[A-Za-z_][A-Za-z0-9_]*"\s*:)',
+            r'\1,\n\2',
+            cleaned,
+        )
+
+        # Repair 4: smart quotes → ASCII quotes
+        cleaned = cleaned.replace(""", '"').replace(""", '"')
+        cleaned = cleaned.replace("'", "'").replace("'", "'")
+
+        return json.loads(cleaned)
 
     try:
         parsed = safe_json_load(raw_text)
         return parsed
-    except json.JSONDecodeError:
-        print("⚠️ Top5 AI response invalid JSON")
+    except json.JSONDecodeError as e:
+        print(f"⚠️ Top5 AI response invalid JSON: {e}")
+        print("---- RAW RESPONSE START ----")
         print(raw_text)
+        print("---- RAW RESPONSE END ----")
         return {}
 
 # ---------------- Email Client Setup ----------------
