@@ -67,19 +67,31 @@ def extract_display_signals(trend):
         }
 
 def normalize_hml(value):
-        if not value:
-            return "Low"
+    """
+    Extracts High/Medium/Low from a value that may contain explanation text.
 
-        v = str(value).strip().lower()
+    Handles formats like:
+      "High"
+      "High - some explanation"
+      "Medium; because reasons"
+      "low, weak signal"
+    """
+    if not value:
+        return "Low"
 
-        if v in ["high", "strong", "large"]:
-            return "High"
-        elif v in ["medium", "moderate"]:
-            return "Medium"
-        elif v in ["low", "small", "weak"]:
-            return "Low"
+    v = str(value).strip().lower()
 
+    # Check for keywords anywhere in the string, in priority order.
+    # High first, then Medium, then Low — because "medium-high" should
+    # be High, and "low-medium" should be Medium.
+    if "high" in v or "strong" in v or "large" in v:
+        return "High"
+    if "medium" in v or "moderate" in v:
         return "Medium"
+    if "low" in v or "small" in v or "weak" in v:
+        return "Low"
+
+    return "Medium"
 
 import os
 import sib_api_v3_sdk
