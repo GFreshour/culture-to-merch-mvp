@@ -26,10 +26,11 @@ from utils import normalize_for_pdf, extract_display_signals, normalize_hml
 #from trends_reddit import get_reddit_trends
 from trends_reddit_rss import get_reddit_trends_rss
 from trends_x import get_x_trends
-from trends_tiktok import get_tiktok_trends
-from trends_substack import get_substack_trends
+#from trends_tiktok import get_tiktok_trends
+#from trends_substack import get_substack_trends
 from trends_google import get_daily_trends
 from ai_trend_expander import expand_trends_with_ai
+from trends_pinterest import get_pinterest_trends
 from trends_reddit_apify import get_reddit_trends_apify
 
 from tier0_product_gate import run_productability_gate
@@ -313,6 +314,17 @@ def build_source_evidence(trend):
             "strength": 50,
             "has_engagement": False,
             "reason": "present in today's Google trends",
+        }
+
+    if source == "pinterest":
+        # Pinterest trends are product-discovery signals. Same class as
+        # Google Trends (people searching), but arguably more POD-relevant
+        # because Pinterest *is* a product discovery engine.
+        return {
+            "class": "search",
+            "strength": 55,
+            "has_engagement": False,
+            "reason": "trending on Pinterest",
         }
 
     if source == "substack":
@@ -1020,25 +1032,27 @@ def run():
     #        log["reddit_rss_failed"] = True
     #        raw_reddit_trends = []
     
-    try:
-        trends_tiktok = get_tiktok_trends()
-        log["tiktok_count"] = len(trends_tiktok)
-    except Exception as e:
-        print(f"⚠️ TikTok scraper failed completely: {e}")
-        log["tiktok_failed"] = True
-        trends_tiktok = []
+    #try:
+    #    trends_tiktok = get_tiktok_trends()
+    #    log["tiktok_count"] = len(trends_tiktok)
+    #except Exception as e:
+    #    print(f"⚠️ TikTok scraper failed completely: {e}")
+    #    log["tiktok_failed"] = True
+    trends_tiktok = []
     
     #Get substrack trends
-    try:
-        substack_trends = get_substack_trends(client)
-        log["substack_count"] = len(substack_trends)
+    #try:
+    #    substack_trends = get_substack_trends(client)
+    #    log["substack_count"] = len(substack_trends)
 
-    except Exception as e:
-        print(f"⚠️ Substack failed: {e}")
-        log["substack_failed"] = True
-        substack_trends = []
+    #except Exception as e:
+    #    print(f"⚠️ Substack failed: {e}")
+    #    log["substack_failed"] = True
+    #    substack_trends = []
     
-    print(f"📊 Substack trends fetched: {len(substack_trends)}")
+    #print(f"📊 Substack trends fetched: {len(substack_trends)}")
+    
+    substack_trends = []
 
     try:
         google_trends = get_daily_trends()
@@ -1047,9 +1061,25 @@ def run():
         print(f"⚠️ Google rss feed scraper failed completely: {e}")
         log["google_failed"] = True
         google_trends = []
+
+    # --- PINTEREST ---
+    try:
+        pinterest_trends = get_pinterest_trends()
+        log["pinterest_count"] = len(pinterest_trends)
+    except Exception as e:
+        print(f"⚠️ Pinterest scraper failed: {e}")
+        log["pinterest_failed"] = True
+        pinterest_trends = []
     
 
-    all_raw_trends = raw_reddit_trends + trends_tiktok + substack_trends + google_trends
+    all_raw_trends = (
+        raw_reddit_trends
+        + trends_tiktok
+        + substack_trends
+        + google_trends
+        + pinterest_trends
+    )
+
     log["total_raw"] = len(all_raw_trends)
     #raw_x_trends = get_x_trends(client)
 
