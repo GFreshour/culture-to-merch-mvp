@@ -213,12 +213,12 @@ def score_trend(trend):
     # -------------------------
     final_score = base_score * source_weight
 
-        if final_score >= 1.2:
-            return "High"
-        elif final_score >= 0.8:
-            return "Medium"
-        else:
-            return "Low"
+    if final_score >= 1.2:
+        return "High"
+    elif final_score >= 0.8:
+        return "Medium"
+    else:
+        return "Low"
 
     # ---------------- SOURCE EVIDENCE ----------------
     # Every trend carries a small dict describing what KIND of evidence it is,
