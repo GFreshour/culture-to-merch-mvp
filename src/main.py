@@ -213,12 +213,74 @@ def score_trend(trend):
     # -------------------------
     final_score = base_score * source_weight
 
-    if final_score >= 1.2:
-        return "High"
-    elif final_score >= 0.8:
-        return "Medium"
-    else:
-        return "Low"
+        if final_score >= 1.2:
+            return "High"
+        elif final_score >= 0.8:
+            return "Medium"
+        else:
+            return "Low"
+
+    # ---------------- SOURCE EVIDENCE ----------------
+    # Every trend carries a small dict describing what KIND of evidence it is,
+    # so the ranker and AI prompts can treat different sources appropriately.
+    #
+    # class values:
+    #   "crowd"      = real people engaging (Reddit score/comments)
+    #   "search"     = people searching (Google Trends)
+    #   "editorial"  = curated by a human editor (Substack / TrendHunter)
+    #   "velocity"   = fast cultural movement (TikTok)
+    #   "synthetic"  = AI-generated filler (AI expander)
+    #
+    # strength: 0-100, normalized WITHIN the class. Not comparable across classes.
+    # has_engagement: True only when we have real per-item engagement numbers.
+
+    def build_source_evidence(trend):
+        source = (trend.get("source") or "").lower()
+        is_synthetic = bool(trend.get("synthetic", False)) or source == "synthetic"
+
+        if is_synthetic:
+            return {
+                "class": "synthetic",
+                "strength": 0,
+                "has_engagement": False,
+            }
+
+        if source == "reddit":
+            # Placeholder strength for now — Reddit engagement normalization
+            # lands in a later change. This just declares the class.
+            return {
+                "class": "crowd",
+                "strength": 0,
+                "has_engagement": True,
+            }
+
+        if source == "google_trends":
+            return {
+                "class": "search",
+                "strength": 0,
+                "has_engagement": False,
+            }
+
+        if source == "substack":
+            return {
+                "class": "editorial",
+                "strength": 0,
+                "has_engagement": False,
+            }
+
+        if source == "tiktok":
+            return {
+                "class": "velocity",
+                "strength": 0,
+                "has_engagement": False,
+            }
+
+        # Unknown source — treat conservatively
+        return {
+            "class": "unknown",
+            "strength": 0,
+            "has_engagement": False,
+        }
 
 GENERIC_PHRASES = [
     "vibes",
@@ -909,6 +971,17 @@ def run():
     log["after_dedupe"] = len(all_raw_trends)
     print(f"📊 After internal dedupe: {len(all_raw_trends)}")
 
+    # Tag every trend with its evidence class BEFORE any filtering
+    for t in all_raw_trends:
+        t["source_evidence"] = build_source_evidence(t)
+
+    # Quick visibility into evidence mix
+    from collections import Counter
+    class_counts = Counter(
+        t["source_evidence"]["class"] for t in all_raw_trends
+    )
+    print(f"📊 Evidence mix: {dict(class_counts)}")
+
     all_raw_trends = remove_recent_trends(all_raw_trends)
     log["after_history"] = len(all_raw_trends)
     print(f"📊 After history filter: {len(all_raw_trends)}")
@@ -950,12 +1023,22 @@ def run():
         for trend in ai_trends:
             gated = run_productability_gate(trend, client)
             if gated:
+                # Mark as synthetic BEFORE it enters the pool
+                gated["synthetic"] = True
+                gated["source_evidence"] = build_source_evidence(gated)
                 ai_trends_filtered.append(gated)
 
-        gate_passed_trends.extend(ai_trends_filtered)
+            gate_passed_trends.extend(ai_trends_filtered)
 
-        print(f"📊 After AI expansion: {len(gate_passed_trends)} trends")
+            synthetic_count = sum(
+            1 for t in gate_passed_trends
+            if t.get("source_evidence", {}).get("class") == "synthetic"
+        )
+
+        print(f"📊 After AI expansion: {len(gate_passed_trends)} trends "
+              f"({synthetic_count} synthetic)")
         log["after_ai"] = len(gate_passed_trends)
+        log["synthetic_count"] = synthetic_count
 
     # Use gate_passed_trends going forward
     trends = gate_passed_trends
