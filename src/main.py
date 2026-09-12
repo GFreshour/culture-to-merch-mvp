@@ -1019,6 +1019,7 @@ def run():
         ai_trends = expand_trends_with_ai(client, gate_passed_trends)
 
         # Run Gate 0 on AI-generated trends too
+                # Run Gate 0 on AI-generated trends too
         ai_trends_filtered = []
         for trend in ai_trends:
             gated = run_productability_gate(trend, client)
@@ -1028,9 +1029,10 @@ def run():
                 gated["source_evidence"] = build_source_evidence(gated)
                 ai_trends_filtered.append(gated)
 
-            gate_passed_trends.extend(ai_trends_filtered)
+        # Extend the pool ONCE, after the loop finishes
+        gate_passed_trends.extend(ai_trends_filtered)
 
-            synthetic_count = sum(
+        synthetic_count = sum(
             1 for t in gate_passed_trends
             if t.get("source_evidence", {}).get("class") == "synthetic"
         )
