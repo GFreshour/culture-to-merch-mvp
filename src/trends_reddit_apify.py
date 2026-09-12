@@ -20,7 +20,7 @@ SUBREDDITS = [
     "parenting"
 ]
 
-POSTS_PER_SUBREDDIT = 5  # Keeps daily pull ~50 posts to control Apify costs
+POSTS_PER_SUBREDDIT = 50  # Keeps daily pull ~50 posts to control Apify costs
 
 
 # -----------------------------------
@@ -42,7 +42,7 @@ def is_valid_trend(title: str) -> bool:
         return False
 
     context_phrases = [
-        "this", "that", "these", "those",
+        #"this", "that", "these", "those",
         "today i", "yesterday i",
         "my boss", "my coworker",
         "look at", "watch this",
