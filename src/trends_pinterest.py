@@ -5,6 +5,7 @@
 import os
 from typing import List, Dict, Any
 from apify_client import ApifyClient
+from source_filters import is_valid_search_trend
 
 # Pinterest Trends scraper on Apify
 # Returns trending keywords with growth scores and seasonality
@@ -62,8 +63,10 @@ def get_pinterest_trends() -> List[Dict[str, Any]]:
             if not keyword:
                 continue
 
-            # Basic sanity filter — skip super-short or obviously non-merch
-            if len(keyword.split()) < 2:
+            # Shared search-source quality filter
+            is_valid, reason = is_valid_search_trend(keyword)
+            if not is_valid:
+                print(f"   🚫 Pinterest reject: '{keyword}' ({reason})")
                 continue
 
             trend = {

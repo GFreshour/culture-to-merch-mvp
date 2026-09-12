@@ -1,5 +1,6 @@
 import feedparser
 import re
+from source_filters import is_valid_search_trend
 
 GOOGLE_TRENDS_RSS = "https://trends.google.com/trending/rss?geo=US"
 
@@ -41,6 +42,12 @@ def get_daily_trends():
         cleaned_title = re.sub(r"\s+", " ", raw_title)
 
         if not is_valid_google_trend(cleaned_title):
+            continue
+
+        # Shared search-source quality filter
+        is_valid, reason = is_valid_search_trend(cleaned_title)
+        if not is_valid:
+            print(f"   🚫 Google reject: '{cleaned_title}' ({reason})")
             continue
 
         trends.append({
