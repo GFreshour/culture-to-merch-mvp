@@ -234,53 +234,53 @@ def score_trend(trend):
     # strength: 0-100, normalized WITHIN the class. Not comparable across classes.
     # has_engagement: True only when we have real per-item engagement numbers.
 
-    def build_source_evidence(trend):
-        source = (trend.get("source") or "").lower()
-        is_synthetic = bool(trend.get("synthetic", False)) or source == "synthetic"
+def build_source_evidence(trend):
+    source = (trend.get("source") or "").lower()
+    is_synthetic = bool(trend.get("synthetic", False)) or source == "synthetic"
 
-        if is_synthetic:
-            return {
-                "class": "synthetic",
-                "strength": 0,
-                "has_engagement": False,
-            }
-
-        if source == "reddit":
-            # Placeholder strength for now — Reddit engagement normalization
-            # lands in a later change. This just declares the class.
-            return {
-                "class": "crowd",
-                "strength": 0,
-                "has_engagement": True,
-            }
-
-        if source == "google_trends":
-            return {
-                "class": "search",
-                "strength": 0,
-                "has_engagement": False,
-            }
-
-        if source == "substack":
-            return {
-                "class": "editorial",
-                "strength": 0,
-                "has_engagement": False,
-            }
-
-        if source == "tiktok":
-            return {
-                "class": "velocity",
-                "strength": 0,
-                "has_engagement": False,
-            }
-
-        # Unknown source — treat conservatively
+    if is_synthetic:
         return {
-            "class": "unknown",
+            "class": "synthetic",
             "strength": 0,
             "has_engagement": False,
         }
+
+    if source == "reddit":
+        # Placeholder strength for now — Reddit engagement normalization
+        # lands in a later change. This just declares the class.
+        return {
+            "class": "crowd",
+            "strength": 0,
+            "has_engagement": True,
+        }
+
+    if source == "google_trends":
+        return {
+            "class": "search",
+            "strength": 0,
+            "has_engagement": False,
+        }
+
+    if source == "substack":
+        return {
+            "class": "editorial",
+            "strength": 0,
+            "has_engagement": False,
+        }
+
+    if source == "tiktok":
+        return {
+            "class": "velocity",
+            "strength": 0,
+            "has_engagement": False,
+        }
+
+    # Unknown source — treat conservatively
+    return {
+        "class": "unknown",
+        "strength": 0,
+        "has_engagement": False,
+    }
 
 GENERIC_PHRASES = [
     "vibes",
