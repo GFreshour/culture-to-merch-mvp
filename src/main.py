@@ -234,6 +234,55 @@ def score_trend(trend):
     # strength: 0-100, normalized WITHIN the class. Not comparable across classes.
     # has_engagement: True only when we have real per-item engagement numbers.
 
+import math
+
+def _reddit_strength(trend):
+    """
+    Normalize Reddit engagement into 0-100.
+
+    Uses log scaling for score and comments because raw values are
+    heavy-tailed (0 to 40k+). Upvote ratio acts as a gate, not a bonus:
+    a low ratio means the post is divisive, which is usually bad for merch.
+
+    This does NOT attempt subreddit-relative normalization yet — that
+    needs historical baselines we don't have. Log scale is honest for now.
+    """
+    score = trend.get("score") or 0
+    comments = trend.get("comment_count") or 0
+    ratio = trend.get("upvote_ratio") or 0
+
+    try:
+        score = max(0, int(score))
+        comments = max(0, int(comments))
+        ratio = float(ratio)
+    except (TypeError, ValueError):
+        return 0, "unparseable metrics"
+
+    # Log-scale each, then map to 0-100.
+    # log1p(0)=0, log1p(500)≈6.2, log1p(5000)≈8.5, log1p(50000)≈10.8
+    # So we scale by ~9.3 to spread typical values across 0-100.
+    score_pts = min(100, (math.log1p(score) / 9.3) * 100)
+    comment_pts = min(100, (math.log1p(comments) / 8.0) * 100)
+
+    # Weighted blend. Comments are rarer and signal discussion, so
+    # they earn slightly more per unit than raw upvotes.
+    blended = (score_pts * 0.6) + (comment_pts * 0.4)
+
+    # Ratio gate. If the post is controversial, cap strength.
+    if ratio and ratio < 0.70:
+        blended *= 0.4
+        reason = f"low upvote ratio {ratio:.2f}"
+    elif ratio and ratio < 0.85:
+        blended *= 0.75
+        reason = f"moderate upvote ratio {ratio:.2f}"
+    else:
+        reason = "healthy ratio"
+
+    strength = int(round(blended))
+
+    return strength, reason
+
+
 def build_source_evidence(trend):
     source = (trend.get("source") or "").lower()
     is_synthetic = bool(trend.get("synthetic", False)) or source == "synthetic"
@@ -243,29 +292,35 @@ def build_source_evidence(trend):
             "class": "synthetic",
             "strength": 0,
             "has_engagement": False,
+            "reason": "AI-generated filler",
         }
 
     if source == "reddit":
-        # Placeholder strength for now — Reddit engagement normalization
-        # lands in a later change. This just declares the class.
+        strength, reason = _reddit_strength(trend)
         return {
             "class": "crowd",
-            "strength": 0,
+            "strength": strength,
             "has_engagement": True,
+            "reason": reason,
         }
 
     if source == "google_trends":
+        # Google Trends RSS doesn't give magnitude yet, only presence.
+        # Flat moderate strength until we upgrade to an Apify source
+        # that returns traffic numbers.
         return {
             "class": "search",
-            "strength": 0,
+            "strength": 50,
             "has_engagement": False,
+            "reason": "present in today's Google trends",
         }
 
     if source == "substack":
         return {
             "class": "editorial",
-            "strength": 0,
+            "strength": 55,
             "has_engagement": False,
+            "reason": "editorially curated",
         }
 
     if source == "tiktok":
@@ -273,13 +328,14 @@ def build_source_evidence(trend):
             "class": "velocity",
             "strength": 0,
             "has_engagement": False,
+            "reason": "no data returned",
         }
 
-    # Unknown source — treat conservatively
     return {
         "class": "unknown",
         "strength": 0,
         "has_engagement": False,
+        "reason": "unrecognized source",
     }
 
 GENERIC_PHRASES = [
@@ -1249,11 +1305,35 @@ def run():
 
         generic_penalty = generic_phrase_penalty(headline)
 
+                # ---- SOURCE EVIDENCE BONUS/PENALTY ----
+        evidence = trend.get("source_evidence", {}) or {}
+        evidence_class = evidence.get("class", "unknown")
+        evidence_strength = evidence.get("strength", 0)
+
+        # Synthetic trends take a structural hit so they can't outrank
+        # real cultural evidence. They can still fill the Watchlist.
+        if evidence_class == "synthetic":
+            evidence_bonus = -25
+        else:
+            # Crowd evidence carries the most weight because it directly
+            # proves people are reacting. Editorial and search carry less.
+            class_weight = {
+                "crowd": 1.0,
+                "velocity": 0.8,
+                "editorial": 0.6,
+                "search": 0.5,
+                "unknown": 0.0,
+            }.get(evidence_class, 0.0)
+
+            # Map strength (0-100) to a bounded bonus (0 to +15)
+            evidence_bonus = (evidence_strength / 100) * 15 * class_weight
+
         trend["final_rank_score"] = (
             weighted_score(trend)
             + signal_bonus
             - risk_penalty
             - generic_penalty
+            + evidence_bonus
         )
 
         enriched_trends.append(trend)
@@ -1283,12 +1363,28 @@ def run():
     TEST_TOP5_LIMIT = 1 if TEST_MODE else 5
     TEST_WATCHLIST_LIMIT = 1 if TEST_MODE else 15
 
-    top5 = enriched_trends[:TEST_TOP5_LIMIT]
+    # Split by evidence class first.
+    # Synthetic trends are only allowed into Watchlist.
+    real_trends = [
+        t for t in enriched_trends
+        if t.get("source_evidence", {}).get("class") != "synthetic"
+    ]
+    synthetic_trends = [
+        t for t in enriched_trends
+        if t.get("source_evidence", {}).get("class") == "synthetic"
+    ]
 
-    watchlist = enriched_trends[
+    top5 = real_trends[:TEST_TOP5_LIMIT]
+
+    # Watchlist: prefer real trends first, pad with synthetics only if needed
+    watchlist_real = real_trends[
         TEST_TOP5_LIMIT:
         TEST_TOP5_LIMIT + TEST_WATCHLIST_LIMIT
     ]
+    remaining_slots = TEST_WATCHLIST_LIMIT - len(watchlist_real)
+    watchlist_synthetic = synthetic_trends[:max(0, remaining_slots)]
+
+    watchlist = watchlist_real + watchlist_synthetic
 
     # Apply report tier labels
     for t in top5:
@@ -1299,6 +1395,9 @@ def run():
 
     print(f"📊 Final Top5 size: {len(top5)}")
     print(f"📊 Final Watchlist size: {len(watchlist)}")
+    print(f"📊 Top5 evidence: {[t.get('source_evidence', {}).get('class') for t in top5]}")
+    print(f"📊 Watchlist evidence: {[t.get('source_evidence', {}).get('class') for t in watchlist]}")
+    print(f"📊 Top5 strengths: {[t.get('source_evidence', {}).get('strength') for t in top5]}")
 
     
     log["final_top5"] = len(top5)
