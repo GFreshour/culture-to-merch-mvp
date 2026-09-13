@@ -297,7 +297,20 @@ def build_source_evidence(trend):
             "reason": "AI-generated filler",
         }
 
-    if source == "reddit":
+    if source in ("reddit", "reddit_rss"):
+        # Distinguish Apify (has engagement) from RSS (no engagement).
+        # RSS trends get a moderate default so they can still compete,
+        # but they sit below trends with real engagement metrics.
+        has_engagement = bool(
+            trend.get("comment_count") or trend.get("upvote_ratio")
+        )
+        if not has_engagement:
+            return {
+                "class": "crowd",
+                "strength": 45,
+                "has_engagement": False,
+                "reason": "RSS source (no engagement metrics)",
+            }
         strength, reason = _reddit_strength(trend)
         return {
             "class": "crowd",

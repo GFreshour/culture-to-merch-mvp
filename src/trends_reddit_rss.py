@@ -156,7 +156,8 @@ def get_reddit_trends_rss(client=None):
             trend = {
                 "title": title,
                 "subreddit": subreddit,
-                "score": score
+                "score": score,
+                "source": "reddit",
             }
 
             trends.append(trend)
