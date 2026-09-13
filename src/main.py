@@ -1113,27 +1113,6 @@ def run():
     num_raw_trends = len(all_raw_trends)  # count of all trends for email
 
     # ----------------------------
-    # 🚫 Thin-title filter (pre-Gate 0)
-    # ----------------------------
-    # Drop structurally thin titles BEFORE we spend AI calls on them.
-    # Applies to all sources. Keeps junk like "All you need…." and
-    # "philadelphia 76ers" out of the pipeline entirely.
-    thin_filtered = []
-    thin_rejected = 0
-    for t in all_raw_trends:
-        is_valid, reason = is_thin_title(t.get("title", ""))
-        if is_valid:
-            thin_filtered.append(t)
-        else:
-            thin_rejected += 1
-            print(f"   🚫 Thin reject: '{t.get('title','')}' ({reason})")
-
-    print(f"📊 Thin-title filter removed: {thin_rejected}")
-
-    all_raw_trends = thin_filtered
-    log["thin_removed"] = thin_rejected
-
-    # ----------------------------
     # Tier 0 — Productability Gate
     # ----------------------------
     print("🛡 Running Tier 0 Productability Gate on all trends…")
@@ -1151,6 +1130,26 @@ def run():
     )
 
     print(f"❌ Gate 0 removed: {log['gate0_removed']}")
+
+    # ----------------------------
+    # 🚫 Thin-title filter (post-Gate 0)
+    # ----------------------------
+    # Drop structurally thin titles AFTER Gate 0 so Gate 0 sees the
+    # full pool (and can use engagement context), but thin titles
+    # don't survive into enrichment.
+    thin_filtered = []
+    thin_rejected = 0
+    for t in gate_passed_trends:
+        is_valid, reason = is_thin_title(t.get("title", ""))
+        if is_valid:
+            thin_filtered.append(t)
+        else:
+            thin_rejected += 1
+            print(f"   🚫 Thin reject: '{t.get('title','')}' ({reason})")
+
+    print(f"📊 Thin-title filter removed: {thin_rejected}")
+    gate_passed_trends = thin_filtered
+    log["thin_removed"] = thin_rejected
 
     # ----------------------------
     # 🤖 AI Expansion (ONLY IF LOW VOLUME)
