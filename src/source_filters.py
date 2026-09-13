@@ -145,3 +145,61 @@ def is_valid_search_trend(title: str):
             return False, "proper-noun name"
 
     return True, "ok"
+
+
+# ============================================================
+# THIN TITLE FILTER
+# ============================================================
+# Applied to ALL trends before Gate 0, regardless of source.
+# Catches titles that are structurally too thin to support a real
+# merch strategy — truncated fragments, bare proper nouns, etc.
+# These pass Gate 0 today because Gate 0 evaluates "could this be
+# merch?" which a bare title can always answer "maybe."
+
+# Titles ending in these markers are truncated / incomplete.
+TRUNCATION_MARKERS = ("…", "...")
+
+# Very short titles that don't stand alone
+MIN_THIN_WORDS = 3
+
+
+def is_thin_title(title: str):
+    """
+    Returns (is_valid: bool, reason: str).
+
+    Rejects titles that are structurally too thin to support a real
+    merch strategy:
+      - Truncated fragments ("All you need….")
+      - Bare proper nouns ("philadelphia 76ers")
+      - Two-word all-capitalized titles
+
+    This is intentionally applied to ALL sources. Reddit titles that
+    are genuinely thin get dropped too — which is correct, because a
+    thin title with high engagement is still a thin signal.
+
+    Returns is_valid=True when the title is NOT thin (i.e. keep it).
+    """
+    if not title:
+        return False, "empty"
+
+    t = title.strip()
+    tl = t.lower()
+
+    # Truncated
+    if t.endswith(TRUNCATION_MARKERS):
+        return False, "truncated title"
+
+    words = t.split()
+
+    # Too short to stand alone
+    if len(words) < MIN_THIN_WORDS:
+        return False, f"only {len(words)} word(s)"
+
+    # Bare proper noun: 2-3 words, all capitalized, no lowercase connectors
+    # e.g. "philadelphia 76ers", "atlético tucumán", "billie jean king"
+    if len(words) <= 3:
+        all_cap = all(w[0].isupper() for w in words if w and w[0].isalpha())
+        if all_cap:
+            return False, "bare proper noun"
+
+    return True, "ok"

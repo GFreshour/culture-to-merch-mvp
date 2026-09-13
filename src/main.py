@@ -31,6 +31,7 @@ from trends_x import get_x_trends
 from trends_google import get_daily_trends
 from ai_trend_expander import expand_trends_with_ai
 from trends_pinterest import get_pinterest_trends
+from source_filters import is_thin_title
 from trends_reddit_apify import get_reddit_trends_apify
 
 from tier0_product_gate import run_productability_gate
@@ -955,6 +956,7 @@ def run():
 
         "gate0_passed": 0,
         "gate0_removed": 0,
+        "thin_removed": 0,
 
         "viability_removed": 0,
 
@@ -1109,6 +1111,27 @@ def run():
     print(f"📊 After history filter: {len(all_raw_trends)}")
 
     num_raw_trends = len(all_raw_trends)  # count of all trends for email
+
+    # ----------------------------
+    # 🚫 Thin-title filter (pre-Gate 0)
+    # ----------------------------
+    # Drop structurally thin titles BEFORE we spend AI calls on them.
+    # Applies to all sources. Keeps junk like "All you need…." and
+    # "philadelphia 76ers" out of the pipeline entirely.
+    thin_filtered = []
+    thin_rejected = 0
+    for t in all_raw_trends:
+        is_valid, reason = is_thin_title(t.get("title", ""))
+        if is_valid:
+            thin_filtered.append(t)
+        else:
+            thin_rejected += 1
+            print(f"   🚫 Thin reject: '{t.get('title','')}' ({reason})")
+
+    print(f"📊 Thin-title filter removed: {thin_rejected}")
+
+    all_raw_trends = thin_filtered
+    log["thin_removed"] = thin_rejected
 
     # ----------------------------
     # Tier 0 — Productability Gate
@@ -1364,6 +1387,20 @@ def run():
         elif "medium" in risk:
             risk_penalty = 5
 
+        # ---- IP RISK PENALTY ----
+        # The sniff already classifies ip_risk (none/moderate/high).
+        # We use it as a soft penalty because trademarked merch is a
+        # legal liability, not just a quality issue.
+        # "philadelphia 76ers" gets ip_risk=high → −30, dropping it out of Top 5.
+        sniff_for_ip = trend.get("tier2_sniff") or {}
+        ip_risk = str(sniff_for_ip.get("ip_risk", "")).lower()
+
+        ip_penalty = 0
+        if ip_risk == "high":
+            ip_penalty = 30
+        elif ip_risk == "moderate":
+            ip_penalty = 15
+
         headline = (
             enrichment.get("merch_headline")
             or trend.get("title", "")
@@ -1400,6 +1437,7 @@ def run():
             - risk_penalty
             - generic_penalty
             + evidence_bonus
+            - ip_penalty
         )
 
         enriched_trends.append(trend)
