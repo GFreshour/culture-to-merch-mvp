@@ -33,7 +33,34 @@ def run_productability_gate(trend, client):
             f"Source: Reddit (r/{subreddit})"
         )
         evidence_lines.append(
-            f"Engagement: {score} upvotes, {comments} comments, "
+            f"Engagem    if evidence_class == "crowd":
+        score = trend.get("score") or 0
+        comments = trend.get("comment_count") or 0
+        ratio = trend.get("upvote_ratio") or 0
+        subreddit = trend.get("subreddit") or "unknown"
+
+        evidence_lines.append(f"Source: Reddit (r/{subreddit})")
+
+        # Distinguish real engagement (Apify) from RSS (no metrics).
+        # RSS trends have score=0 and no comments/ratio. Do NOT claim
+        # they are a "live cultural moment" — they simply have no
+        # engagement data available.
+        has_real_engagement = bool(comments or ratio)
+
+    if has_real_engagement:
+            evidence_lines.append(
+                f"Engagement: {score} upvotes, {comments} comments, "
+                f"{ratio:.2f} upvote ratio"
+            )
+            evidence_lines.append(
+                "This is real people reacting to real content. "
+                "High engagement means this is a live cultural moment."
+            )
+        else:
+            evidence_lines.append(
+                "Engagement metrics not available (RSS source). "
+                "Judge the title on its own merits."
+            )ent: {score} upvotes, {comments} comments, "
             f"{ratio:.2f} upvote ratio"
         )
         evidence_lines.append(

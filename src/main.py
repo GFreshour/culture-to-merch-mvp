@@ -1134,6 +1134,8 @@ def run():
         gated = run_productability_gate(trend, client)
         if gated:
             gate_passed_trends.append(gated)
+        else:
+            print(f"   🚫 Gate 0 reject: '{trend.get('title', '')[:80]}'")
 
     print(f"✅ {len(gate_passed_trends)} trends passed Gate 0")
     log["gate0_passed"] = len(gate_passed_trends)
