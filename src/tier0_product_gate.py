@@ -29,15 +29,6 @@ def run_productability_gate(trend, client):
         comments = trend.get("comment_count") or 0
         ratio = trend.get("upvote_ratio") or 0
         subreddit = trend.get("subreddit") or "unknown"
-        evidence_lines.append(
-            f"Source: Reddit (r/{subreddit})"
-        )
-        evidence_lines.append(
-            f"Engagem    if evidence_class == "crowd":
-        score = trend.get("score") or 0
-        comments = trend.get("comment_count") or 0
-        ratio = trend.get("upvote_ratio") or 0
-        subreddit = trend.get("subreddit") or "unknown"
 
         evidence_lines.append(f"Source: Reddit (r/{subreddit})")
 
@@ -47,7 +38,7 @@ def run_productability_gate(trend, client):
         # engagement data available.
         has_real_engagement = bool(comments or ratio)
 
-    if has_real_engagement:
+        if has_real_engagement:
             evidence_lines.append(
                 f"Engagement: {score} upvotes, {comments} comments, "
                 f"{ratio:.2f} upvote ratio"
@@ -60,17 +51,10 @@ def run_productability_gate(trend, client):
             evidence_lines.append(
                 "Engagement metrics not available (RSS source). "
                 "Judge the title on its own merits."
-            )ent: {score} upvotes, {comments} comments, "
-            f"{ratio:.2f} upvote ratio"
-        )
-        evidence_lines.append(
-            "This is real people reacting to real content. "
-            "High engagement means this is a live cultural moment."
-        )
+            )
+
     elif evidence_class == "search":
-        evidence_lines.append(
-            f"Source: Search trends ({source})"
-        )
+        evidence_lines.append(f"Source: Search trends ({source})")
         evidence_lines.append(
             "This is a search query, not a conversation. "
             "It may be an event, a schedule, a product, or a topic."
@@ -149,6 +133,10 @@ Additional guidance:
   even if the title alone looks thin.
 - If the evidence is a search query with no engagement data, be
   more skeptical. Search queries are often events, not concepts.
+- If the evidence says "Engagement metrics not available (RSS source)",
+  judge the title on its merits WITHOUT assuming low engagement.
+  A missing metric is not the same as zero engagement. Many of these
+  titles come from real trending Reddit posts.
 - A productability_score above 60 should generally correspond to
   keep=true. A score below 40 should correspond to keep=false.
   Scores in between are judgment calls.
