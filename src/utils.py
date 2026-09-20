@@ -6,6 +6,7 @@ def normalize_for_pdf(trend: dict) -> dict:
 
         # NEW PRIMARY FIELD
         "merch_headline": ai.get("merch_headline", ""),
+        "source_context": ai.get("source_context", ""),
 
         # Strategic Fields
         "core_insight": ai.get("core_insight", ""),
@@ -68,22 +69,47 @@ def extract_display_signals(trend):
 
 def normalize_hml(value):
     """
-    Extracts High/Medium/Low from a value that may contain explanation text.
+    Converts a signal value into High/Medium/Low for display.
 
-    Handles formats like:
-      "High"
-      "High - some explanation"
-      "Medium; because reasons"
-      "low, weak signal"
+    Handles three input types:
+      1. Numbers 0-100 (new format)
+         - 0-30 → Low
+         - 31-60 → Medium
+         - 61-100 → High
+      2. Strings containing keywords
+         - "High - explanation" → High
+         - "medium; because reasons" → Medium
+      3. None or empty → Low
     """
-    if not value:
+    if value is None or value == "":
         return "Low"
 
-    v = str(value).strip().lower()
+    # Numeric path
+    if isinstance(value, (int, float)):
+        try:
+            v = float(value)
+        except (TypeError, ValueError):
+            return "Low"
+        if v >= 61:
+            return "High"
+        if v >= 31:
+            return "Medium"
+        return "Low"
 
-    # Check for keywords anywhere in the string, in priority order.
-    # High first, then Medium, then Low — because "medium-high" should
-    # be High, and "low-medium" should be Medium.
+    # String path — try to parse as a number first (JSON might give us "75")
+    v_str = str(value).strip()
+    try:
+        v_num = float(v_str)
+        if v_num >= 61:
+            return "High"
+        if v_num >= 31:
+            return "Medium"
+        return "Low"
+    except ValueError:
+        pass
+
+    # Keyword path
+    v = v_str.lower()
     if "high" in v or "strong" in v or "large" in v:
         return "High"
     if "medium" in v or "moderate" in v:

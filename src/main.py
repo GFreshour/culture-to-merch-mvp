@@ -415,32 +415,106 @@ def clean_text_for_prompt(text: str) -> str:
 
 def build_ai_prompt(trend):
     """
-    Builds the AI prompt for Top 5 Deep Strategic Execution enrichment.
-    Returns strict JSON to populate the PDF/email.
+    Builds the enrichment prompt.
+
+    Receives three evidence blocks:
+      1. The raw signal (title, source, engagement)
+      2. Gate 0's assessment (category, productability, reason)
+      3. The sniff's assessment (commercial score, buyer intent, reasoning)
+
+    Instructs the AI to INTERPRET, not reproduce. Includes an explicit
+    no-reproduction rule.
     """
-    clean_title = clean_text_for_prompt(trend['title'])
-    
-    # Optional: include source if you want context
-    source = trend.get('source', 'unknown').capitalize()
-    
+    clean_title = clean_text_for_prompt(trend.get("title", ""))
+    source = (trend.get("source") or "unknown").lower()
+    subreddit = trend.get("subreddit") or ""
+    score = trend.get("score") or 0
+    comments = trend.get("comment_count") or 0
+    ratio = trend.get("upvote_ratio") or 0
+
+    evidence = trend.get("source_evidence") or {}
+    evidence_class = evidence.get("class", "unknown")
+    has_engagement = evidence.get("has_engagement", False)
+
+    gate = trend.get("productability") or {}
+    sniff = trend.get("tier2_sniff") or {}
+    sniff_reasoning = sniff.get("reasoning") or {}
+
+    # ---- Build the human-readable signal block ----
+    if source == "reddit":
+        source_line = f"Reddit (r/{subreddit})" if subreddit else "Reddit"
+    elif source == "pinterest":
+        source_line = "Pinterest Trends (US)"
+    else:
+        source_line = source.capitalize()
+
+    if has_engagement:
+        engagement_line = (
+            f"{score} upvotes, {comments} comments, "
+            f"{ratio:.2f} upvote ratio"
+        )
+    else:
+        engagement_line = (
+            "not available (RSS/search source — judge the signal "
+            "on its own merits, do not assume low engagement)"
+        )
+
+    signal_block = f"""- Original text: "{clean_title}"
+- Source: {source_line}
+- Engagement: {engagement_line}
+- Evidence class: {evidence_class}"""
+
+    gate_block = f"""- Category: {gate.get('category', 'unknown')}
+- Productability: {gate.get('productability_score', '?')}/100
+- Reason: {gate.get('reason', 'not provided')}"""
+
+    sniff_block = f"""- Commercial score: {sniff.get('commercial_score', '?')}/10
+- Buyer intent: {sniff.get('buyer_intent', 'unknown')}
+- Trend type: {sniff.get('trend_type', 'unknown')}
+- Audience size: {sniff.get('audience_size', 'unknown')}
+- Saturation risk: {sniff.get('saturation_risk', 'unknown')}
+- IP risk: {sniff.get('ip_risk', 'unknown')}
+- Longevity: {sniff.get('longevity', 'unknown')}
+- Why it works: {sniff_reasoning.get('why_it_works', 'not provided')}
+- Who it resonates with: {sniff_reasoning.get('who_it_resonates_with', 'not provided')}"""
+
     return f"""
 You are a senior merch strategist helping sellers create high-converting products.
 
-Analyze this trend for **commercial execution**.
-Do NOT summarize the post.
-Extract the monetizable insight and build actionable strategy.
-Be opinionated, decisive, and realistic about what will sell.
+You will receive a trend with three layers of context:
+  1. The raw signal (what was observed)
+  2. Gate 0's assessment (whether it looked merch-shaped)
+  3. The sniff's assessment (commercial potential)
 
-Trend ({source}):
-"{clean_title}"
+Your job is to INTERPRET this signal into a merch strategy.
 
-Evaluate commercial potential based not only on current momentum, but also on niche variations, viral meme potential, and likely buyer engagement if executed well. Assign High, Medium, or Low honestly, considering realistic monetization opportunities, even if the trend isn’t yet widely saturated.
-Consider how the trend would perform across multiple merch products and micro-niches, not just the main product idea.
+═══════════════════════════════════════════════════════════════════
+HARD RULE — DO NOT REPRODUCE THE ORIGINAL TEXT
+═══════════════════════════════════════════════════════════════════
+Do NOT copy, quote, or lightly rephrase the original text verbatim.
+Do NOT use it as the merch_headline.
+Your output must be an ORIGINAL interpretation of the cultural moment.
+If you catch yourself repeating the source, rewrite it.
 
+═══════════════════════════════════════════════════════════════════
+TREND SIGNAL
+═══════════════════════════════════════════════════════════════════
+{signal_block}
+
+GATE 0 ASSESSMENT
+{gate_block}
+
+SNIFF ASSESSMENT
+{sniff_block}
+
+═══════════════════════════════════════════════════════════════════
+YOUR OUTPUT
+═══════════════════════════════════════════════════════════════════
 Return STRICT JSON ONLY with this schema:
 
 {{
   "merch_headline": "",
+  "source_context": "",
   "core_insight": "",
   "buyer_psychology": "",
   "target_audience": "",
@@ -462,24 +536,36 @@ Return STRICT JSON ONLY with this schema:
   "execution_priority": "",
   "ai_artwork_prompt": "",
   "trend_signals": {{
-      "merch_potential": "",
-      "hashtag_growth": "",
-      "memetic_variations": "",
-      "cross_platform_spread": "",
-      "search_volume_mentions": "",
-      "merch_branding": "",
+      "merch_potential": 0,
+      "hashtag_growth": 0,
+      "memetic_variations": 0,
+      "cross_platform_spread": 0,
+      "search_volume_mentions": 0,
+      "merch_branding": 0,
       "rationale": "",
       "examples": []
   }}
 }}
 
-Instructions:
+═══════════════════════════════════════════════════════════════════
+FIELD INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════
 
 0. **merch_headline**
-   - Create ONE short, punchy primary slogan.
+   - ONE short, punchy, ORIGINAL slogan.
    - 3–7 words max.
-   - If the Reddit title is too long, compress it into something sellable.
    - Must work standalone on a shirt or mug.
+   - Must NOT reproduce the original text.
+   - Must capture the CULTURAL MOMENT, not quote it.
+   - Prefer specificity over generality. If it reads like a
+     Hallmark card, reject and try again.
+
+0b. **source_context**
+   - ONE short sentence (max 15 words).
+   - Non-verbatim paraphrase of where this trend came from.
+   - No quotes. No original title fragments.
+   - Example: "Inspired by a viral Reddit moment about morning routine chaos"
+   - Example: "Trending keyword on Pinterest around space-themed aesthetics"
 
 1. **core_insight**
    - Explain why this trend resonates culturally.
@@ -487,220 +573,125 @@ Instructions:
 
 2. **buyer_psychology**
    - Identify the emotional trigger for purchase.
-   - Examples: identity signaling, belonging, humor, nostalgia, irony, pride.
 
 3. **target_audience**
-   Be specific (age range, subculture, gifting buyer, etc.)
+   - Be specific (age range, subculture, gifting buyer, etc.)
 
 4. **primary_product**
    - ONE product most likely to convert immediately.
 
 5. **secondary_products**
-   - Up to 3 logical expansions that complement the primary product.
+   - Up to 3 logical expansions.
 
 6. **avoid_products**
-   - List products that would flop or feel forced.
+   - Products that would flop or feel forced.
 
 7. **design_direction**
-   - Concrete layout, typography, illustration style, composition, print placement.
-   - Describe visual hierarchy, color choices, and imagery.
+   - Concrete layout, typography, illustration style, composition.
 
 8. **niche_variations**
-   Instead of random alternates, create 3 monetizable segmented versions.
-   Each must include:
-     - niche_name (e.g., "Best Friends Version")
-     - subtext (optional line under headline)
-     - design_notes (specific styling & placement)
-     - color_palette (specific tones or vibe)
-     - target_buyer (who this version is for)
-    - Avoid generic alternates; each must feel Etsy-ready.
+   - 3 monetizable segmented versions.
+   - Each must include niche_name, subtext, design_notes,
+     color_palette, target_buyer.
+   - Avoid generic alternates; each must feel Etsy-ready.
 
 9. **differentiation_strategy**
    - How this version avoids copycats.
-   - Include a unique angle, phrasing, or design feature.
 
 10. **risk_level**
-    - Low / Medium / High, with a short commercial justification.
+    - Low / Medium / High, with short commercial justification.
 
 11. **execution_priority**
-    - Should this be tested immediately, batch tested, or monitored?
+    - Test immediately, batch test, or monitor.
 
-IMPORTANT SIGNAL SCORING CONTEXT:
+═══════════════════════════════════════════════════════════════════
+TREND SIGNALS — NUMERIC SCORING
+═══════════════════════════════════════════════════════════════════
 
-This trend has ALREADY passed multiple commercial filtering stages
-and is competing against other qualified merch opportunities.
+Each signal in trend_signals is a number from 0 to 100.
+Use the full range. Do NOT cluster around a single value.
 
-You must score signals RELATIVE TO OTHER QUALIFIED TRENDS,
-not in isolation.
+Guidance:
+  0–30   = weak signal
+  31–60  = moderate signal
+  61–85  = strong signal
+  86–100 = exceptional signal
 
-The Top 5 trends should visibly outperform Watchlist trends.
+You are scoring RELATIVE TO OTHER QUALIFIED TRENDS in the same batch.
+The Top 5 should visibly outperform the Watchlist.
 
-Scoring guidance:
-- High = unusually strong compared to typical daily trends
-- Medium = viable but not dominant
-- Low = weak, niche, unstable, or difficult to monetize
+Signal definitions:
+  - merch_potential: how likely is this to actually sell merch
+  - hashtag_growth: momentum in hashtags/searches
+  - memetic_variations: how remixable and meme-able the concept is
+  - cross_platform_spread: whether this crosses platform boundaries
+  - search_volume_mentions: how much organic search interest exists
+  - merch_branding: how strongly it brands the wearer
 
-Do NOT default everything to Medium.
+Include a short "rationale" string and 0–3 "examples" for the overall
+signal set.
 
-Most trends should contain a mix of:
-- High + Medium
-OR
-- Medium + Low
+Distribute scores. A trend with strong memetic potential but weak
+search volume should score 70+ on one and 30- on the other.
+Do NOT give every signal the same number.
 
-Only exceptional trends should receive multiple High ratings.
+═══════════════════════════════════════════════════════════════════
+AI ARTWORK PROMPT
+═══════════════════════════════════════════════════════════════════
 
-Signal differentiation is extremely important.
-The scores should help explain WHY this trend ranked highly.
+- Platform-agnostic prompt for POD artwork generation.
+- Describe ONLY the printable graphic, not products, mockups, or scenes.
+- Must work on transparent, white, dark, and light backgrounds.
+- Include: artistic style, composition, typography style, line weight,
+  textures, color palette, mood, visual hierarchy, print aesthetic.
+- Optimize for screen print aesthetics, POD friendliness, thumbnail
+  visibility, simplified silhouettes, clean edges, high contrast.
+- Prefer isolated subjects, centered compositions, vector-friendly
+  styling, limited palettes.
+- Avoid cluttered scenes, detailed realism, busy backgrounds, tiny
+  illegible typography.
+- Keep under 120 words.
 
-Examples:
-- A trend with broad meme remixability may earn HIGH memetic_variations
-  even if search volume is only Medium.
+Example quality:
+"Distressed retro illustration of an exhausted raccoon drinking gas
+station coffee, muted olive and cream palette, vintage halftone
+texture, centered composition, thick collegiate typography, simplified
+vector shapes, isolated artwork with transparent background
+compatibility, worn screen print aesthetic, ironic sleep-deprived mood,
+high contrast"
 
-- A niche fandom trend may have HIGH buyer depth
-  but LOW cross-platform spread.
+═══════════════════════════════════════════════════════════════════
+AVOID
+═══════════════════════════════════════════════════════════════════
 
-- A trend with strong emotional identity signaling may have HIGH merch_potential
-  despite Medium hashtag growth.
-
-Use realistic commercial judgment, not safe averaging.
-
-12. **trend_signals**
-    - Assign realistic High / Medium / Low scores per category.
-    - Categories:
-      - merch_potential
-      - hashtag_growth
-      - memetic_variations
-      - cross_platform_spread
-      - search_volume_mentions
-      - merch_branding
-    - Provide rationale for each score.
-    - Give real examples if relevant.
-    - Avoid all Medium scores; be decisive.
-
-13. **ai_artwork_prompt**
-   - Create a platform-agnostic AI artwork generation prompt optimized specifically for PRINT-ON-DEMAND merchandise artwork.
-
-   - The prompt should describe ONLY the printable graphic/design itself.
-
-   - The generated artwork must work cleanly on:
-     - transparent backgrounds
-     - white backgrounds
-     - dark shirts
-     - light shirts
-
-   - DO NOT describe:
-     - t-shirts
-     - hoodies
-     - mockups
-     - models
-     - product photography
-     - studio scenes
-     - environmental backgrounds
-     - cinematic scenes
-
-   - The artwork should feel intentionally designed for merch printing, not like a random AI illustration.
-
-   - The artwork prompt MUST align with:
-     - buyer_psychology
-     - target_audience
-     - design_direction
-     - niche_variations
-
-   - The visual direction should feel like a direct commercial execution of the merch strategy above.
-
-   - Include:
-     - artistic style
-     - composition
-     - typography style
-     - line weight
-     - textures
-     - color palette
-     - mood
-     - visual hierarchy
-     - print aesthetic
-
-   - Optimize for:
-     - screen print aesthetics
-     - POD friendliness
-     - strong thumbnail visibility
-     - emotional recognition
-     - simplified readable silhouettes
-     - clean edge separation
-     - high print contrast
-
-   - Prefer:
-     - isolated subjects
-     - centered compositions
-     - vector-friendly styling
-     - limited but impactful color palettes
-
-   - Avoid:
-     - cluttered scenes
-     - overly detailed realism
-     - busy backgrounds
-     - tiny illegible typography
-
-   - Keep under 120 words.
-
-   - Example quality:
-     "Distressed retro illustration of an exhausted raccoon drinking gas station coffee, muted olive and cream palette, vintage halftone texture, centered composition, thick collegiate typography, simplified vector shapes, isolated artwork with transparent background compatibility, worn screen print aesthetic, ironic sleep-deprived mood, high contrast"
-
-Additional guidance:
-
+- DO NOT reproduce the original text.
 - DO NOT generate generic motivational slogans.
-- Avoid overused merch language like:
-  "vibes", "elevate", "unleash", "shine", "dream", "warrior",
-  "mindset", "era", "journey", "energy", "legend", "boss",
-  "only", "revolution", "future", "rise", "level up".
-
+- Avoid: "vibes", "elevate", "unleash", "shine", "dream", "warrior",
+  "mindset", "era", "journey", "energy", "legend", "boss", "only",
+  "revolution", "future", "rise", "level up".
 - Avoid Hallmark-style positivity.
-- Avoid fake inspirational language.
 - Avoid corporate wellness phrasing.
 - Avoid generic Etsy-style empowerment slogans.
 
-- Strong merch concepts are:
-  weird,
-  culturally specific,
-  emotionally sharp,
-  identity-driven,
-  ironic,
-  hyper-niche,
-  or socially recognizable.
+Strong merch concepts are weird, culturally specific, emotionally sharp,
+identity-driven, ironic, hyper-niche, or socially recognizable.
 
-- Prefer:
-  subculture language,
-  internet behavior,
-  fandom behavior,
-  awkward truths,
-  tribal identity,
-  emotionally specific humor,
-  insider references,
-  contradictions,
-  and culturally recognizable tensions.
+Prefer: subculture language, internet behavior, fandom behavior,
+awkward truths, tribal identity, emotionally specific humor, insider
+references, contradictions, culturally recognizable tensions.
 
-- Merch headlines should feel:
-  memetic,
-  socially specific,
-  instantly visualizable,
-  and difficult to confuse with generic POD content.
+BAD examples:
+  "Shine Bright" / "Elevate Your Journey" / "Dream Bigger"
 
-- BAD examples:
-  "Shine Bright"
-  "Elevate Your Journey"
-  "Dream Bigger"
-  "Protect Your Energy"
-
-- GOOD examples:
+GOOD examples:
   "I Paused My Game For This"
   "Emotionally Attached To Rotting Produce"
   "Powered By Gas Station Coffee"
   "My Other Personality Is At Home"
 
-- If the concept feels generic, predictable, or reusable across unrelated niches, reject it internally and generate a sharper angle.
+Your goal is differentiation, not positivity.
 
-- Your goal is differentiation, not positivity.
-
-- Return JSON only.
+Return JSON only.
 """.strip()
 
 def enrich_top5_with_ai(trend):
@@ -772,13 +763,39 @@ def enrich_top5_with_ai(trend):
 
     try:
         parsed = safe_json_load(raw_text)
-        return parsed
     except json.JSONDecodeError as e:
         print(f"⚠️ Top5 AI response invalid JSON: {e}")
         print("---- RAW RESPONSE START ----")
         print(raw_text)
         print("---- RAW RESPONSE END ----")
         return {}
+
+    # ---- REPRODUCTION CHECK ----
+    # Hard rule: enrichment must not reproduce the source text.
+    # We check for 4+ consecutive word matches between the source title
+    # and the merch_headline or source_context. If found, reject.
+    source_title = (trend.get("title") or "").lower()
+    headline = (parsed.get("merch_headline") or "").lower()
+    context = (parsed.get("source_context") or "").lower()
+
+    def _verbatim_overlap(source, candidate, min_run=4):
+        if not source or not candidate:
+            return False
+        source_words = source.split()
+        candidate_words = candidate.split()
+        for i in range(len(source_words) - min_run + 1):
+            run = " ".join(source_words[i:i + min_run])
+            if run in candidate:
+                return True
+        return False
+
+    if _verbatim_overlap(source_title, headline) or _verbatim_overlap(source_title, context):
+        print(f"⚠️ Enrichment rejected: verbatim overlap with source for '{trend.get('title', '')[:60]}'")
+        print(f"   Headline: {headline[:80]}")
+        print(f"   Context: {context[:80]}")
+        return {}
+
+    return parsed
 
 # ---------------- Email Client Setup ----------------
 def send_email(subject, html_body, attachment_path=None, to_emails=None):
@@ -1372,6 +1389,13 @@ def run():
             print(f"⚠️ Skipping failed enrichment: {trend['title']}")
             continue
 
+        # For synthetic trends, override source_context with a fixed string.
+        # The AI has no real source to paraphrase, so we hardcode honesty.
+        if trend.get("synthetic", False):
+            enrichment["source_context"] = (
+                "Speculative angle. No direct source signal."
+            )
+
         trend["ai_enrichment"] = enrichment
 
         # --------------------------------
@@ -1495,12 +1519,21 @@ def run():
     top5 = real_trends[:TEST_TOP5_LIMIT]
 
     # Watchlist: prefer real trends first, pad with synthetics only if needed
+    # Real trends fill Watchlist first, up to the limit
     watchlist_real = real_trends[
         TEST_TOP5_LIMIT:
         TEST_TOP5_LIMIT + TEST_WATCHLIST_LIMIT
     ]
-    remaining_slots = TEST_WATCHLIST_LIMIT - len(watchlist_real)
-    watchlist_synthetic = synthetic_trends[:max(0, remaining_slots)]
+
+    # Only pad with synthetics if real trends are thin (< 5 items).
+    # On a healthy day, Watchlist should be all real.
+    MIN_REAL_FOR_NO_PADDING = 5
+    if len(watchlist_real) < MIN_REAL_FOR_NO_PADDING:
+        padding_target = MIN_REAL_FOR_NO_PADDING
+        remaining_slots = max(0, padding_target - len(watchlist_real))
+        watchlist_synthetic = synthetic_trends[:remaining_slots]
+    else:
+        watchlist_synthetic = []
 
     watchlist = watchlist_real + watchlist_synthetic
 
@@ -1711,7 +1744,15 @@ def run():
 
             merch_headline = t.get("merch_headline", "")
             html_lines.append(f"<h2>{html.escape(merch_headline or f'Trend {trend_counter}')}</h2>")
-            
+
+            source_context = t.get("source_context", "")
+            if source_context:
+                html_lines.append(
+                    f"<p style='font-size:12px; color:#6b7280; "
+                    f"font-style:italic; margin-top:-4px; margin-bottom:12px;'>"
+                    f"{html.escape(source_context)}</p>"
+                )
+
             # Extracting the trend signals for Top 5
             signals = extract_display_signals(t)
 
@@ -1839,6 +1880,14 @@ def run():
 
             merch_headline = t.get("merch_headline", "")
             html_lines.append(f"<h2>{html.escape(merch_headline or f'Watchlist {idx}')}</h2>")
+
+            source_context = t.get("source_context", "")
+            if source_context:
+                html_lines.append(
+                    f"<p style='font-size:12px; color:#6b7280; "
+                    f"font-style:italic; margin-top:-4px; margin-bottom:12px;'>"
+                    f"{html.escape(source_context)}</p>"
+                )
 
             # Extracting the trend signals for watchlist
             signals = extract_display_signals(t)

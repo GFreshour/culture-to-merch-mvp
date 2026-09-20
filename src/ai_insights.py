@@ -342,12 +342,18 @@ def generate_tier2_email(
 
         product_html = "".join([f"<li>{p}</li>" for p in products])
 
+        source_ctx = top.get("source_context", "")
+
         email_html += f"""
         <h2 style="margin-bottom:8px;">🚀 Priority Launch Today</h2>
 
         <div style="border:1px solid #ddd; padding:18px; margin-bottom:28px; border-radius:8px;">
 
         <h3 style="margin-top:0;">1. {title}</h3>
+
+        <p style="font-size:12px; color:#6b7280; font-style:italic; margin-top:-6px;">
+        {html.escape(source_ctx)}
+        </p>
 
         <p><b>Risk Level:</b> {risk}</p>
         
