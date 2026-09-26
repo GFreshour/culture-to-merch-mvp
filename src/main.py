@@ -1301,6 +1301,7 @@ def run():
         raw_conf = (
             trend.get("confidence_level")
             or sniff.get("confidence_level")
+            or sniff.get("confidence")
             or 0
         )
 
@@ -1343,10 +1344,14 @@ def run():
     # 6 Rank by commercial strength (weighted)
     # ----------------------------
     def weighted_score(t):
+        """
+        Base score from commercial signals. This is the FLOOR of the
+        ranking — evidence_bonus (in final_rank_score) is now the
+        dominant signal, since it's grounded in real engagement.
+        """
         sniff = t.get("tier2_sniff") or {}
 
         commercial = t.get("commercial_score", 0)
-
         confidence = t.get("confidence_level", 0)
 
         audience_map = {"high": 100, "medium": 60, "low": 30}
@@ -1359,9 +1364,12 @@ def run():
 
         generic_penalty = generic_phrase_penalty(headline)
 
+        # Reduced weights: commercial matters but shouldn't dominate.
+        # The sniff is title-only and hallucination-prone; evidence
+        # strength is the real anchor.
         final_score = (
-            commercial * 0.6 +
-            confidence * 0.3 +
+            commercial * 0.4 +
+            confidence * 0.2 +
             audience * 0.1
         )
 
@@ -1404,16 +1412,37 @@ def run():
 
         signals = enrichment.get("trend_signals", {}) or {}
 
-        signal_map = {
-            "high": 15,
-            "medium": 7,
-            "low": 0
-        }
+        def _signal_to_bonus(value, weight=1.0):
+            """
+            Convert a signal value into a bonus.
+            Handles both numeric (0-100) and string (High/Medium/Low) formats.
+            """
+            if value is None or value == "":
+                return 0.0
+            # Numeric path
+            if isinstance(value, (int, float)):
+                # Map 0-100 → 0-15 bonus
+                return (float(value) / 100.0) * 15.0 * weight
+            # String path
+            v = str(value).lower()
+            if "high" in v or "strong" in v:
+                return 15.0 * weight
+            if "medium" in v or "moderate" in v:
+                return 7.0 * weight
+            if "low" in v or "weak" in v:
+                return 0.0
+            # Try parsing as number-like string
+            try:
+                return (float(v) / 100.0) * 15.0 * weight
+            except ValueError:
+                return 0.0
 
+        # Weighted signal bonus — memetic and merch_potential matter more
+        # than cross-platform spread for a POD seller's decision.
         signal_bonus = (
-            signal_map.get(str(signals.get("merch_potential", "")).lower(), 0) +
-            signal_map.get(str(signals.get("cross_platform_spread", "")).lower(), 0) +
-            signal_map.get(str(signals.get("memetic_variations", "")).lower(), 0)
+            _signal_to_bonus(signals.get("merch_potential"), weight=1.0) +
+            _signal_to_bonus(signals.get("memetic_variations"), weight=0.8) +
+            _signal_to_bonus(signals.get("cross_platform_spread"), weight=0.5)
         )
 
         risk = str(enrichment.get("risk_level", "")).lower()
@@ -1446,18 +1475,16 @@ def run():
 
         generic_penalty = generic_phrase_penalty(headline)
 
-                # ---- SOURCE EVIDENCE BONUS/PENALTY ----
+        # ---- SOURCE EVIDENCE BONUS/PENALTY ----
+        # This is the ranking's anchor to reality. It uses the actual
+        # engagement metrics, not the AI's interpretation of them.
         evidence = trend.get("source_evidence", {}) or {}
         evidence_class = evidence.get("class", "unknown")
         evidence_strength = evidence.get("strength", 0)
 
-        # Synthetic trends take a structural hit so they can't outrank
-        # real cultural evidence. They can still fill the Watchlist.
         if evidence_class == "synthetic":
             evidence_bonus = -25
         else:
-            # Crowd evidence carries the most weight because it directly
-            # proves people are reacting. Editorial and search carry less.
             class_weight = {
                 "crowd": 1.0,
                 "velocity": 0.8,
@@ -1466,8 +1493,10 @@ def run():
                 "unknown": 0.0,
             }.get(evidence_class, 0.0)
 
-            # Map strength (0-100) to a bounded bonus (0 to +15)
-            evidence_bonus = (evidence_strength / 100) * 15 * class_weight
+            # Map strength 0-100 to bonus 0-40 (was 0-15). This is now
+            # the dominant signal in the ranking, because it's the one
+            # grounded in reality (upvotes/comments), not AI judgment.
+            evidence_bonus = (evidence_strength / 100) * 40 * class_weight
 
         trend["final_rank_score"] = (
             weighted_score(trend)
