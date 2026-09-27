@@ -1157,6 +1157,12 @@ def run():
     print(f"✅ {len(gate_passed_trends)} trends passed Gate 0")
     log["gate0_passed"] = len(gate_passed_trends)
 
+    # TEMP DIAGNOSTIC — remove after tracing funnel attrition
+    print("── DIAGNOSTIC: Gate 0 survivors ──")
+    for t in gate_passed_trends:
+        score = t.get("score") or 0
+        print(f"   [gate0] score={score} :: {t.get('title', '')[:70]}")
+
     log["gate0_removed"] = (
         log["after_history"] - len(gate_passed_trends)
     )
@@ -1182,6 +1188,12 @@ def run():
     print(f"📊 Thin-title filter removed: {thin_rejected}")
     gate_passed_trends = thin_filtered
     log["thin_removed"] = thin_rejected
+
+    # TEMP DIAGNOSTIC — remove after tracing funnel attrition
+    print("── DIAGNOSTIC: after thin filter ──")
+    for t in gate_passed_trends:
+        score = t.get("score") or 0
+        print(f"   [thin]  score={score} :: {t.get('title', '')[:70]}")
 
     # ----------------------------
     # 🤖 AI Expansion (ONLY IF LOW VOLUME)
@@ -1271,6 +1283,13 @@ def run():
     
     print(f"📊 Trends after sniff test: {len(trends)}")
     log["after_sniff"] = len(trends)
+
+    # TEMP DIAGNOSTIC — remove after tracing funnel attrition
+    print("── DIAGNOSTIC: after sniff (pre-commercial-filter) ──")
+    for t in trends:
+        score = t.get("score") or 0
+        cs = t.get("tier2_sniff", {}).get("commercial_score", "?")
+        print(f"   [sniff] score={score} cs={cs} :: {t.get('title', '')[:70]}")
     # --------------------------------
     # NORMALIZE NUMERIC SCORES (FIXED SCALE)
     # --------------------------------
@@ -1332,6 +1351,13 @@ def run():
     )
 
     print(f"❌ Removed by commercial score: {log['commercial_removed']}")
+
+    # TEMP DIAGNOSTIC — remove after tracing funnel attrition
+    print("── DIAGNOSTIC: after commercial filter ──")
+    for t in trends:
+        score = t.get("score") or 0
+        cs = t.get("commercial_score", "?")
+        print(f"   [comm]  score={score} cs={cs} :: {t.get('title', '')[:70]}")
 
     if not trends:
         print("⚠️ No strong trends found after sniff filtering.")
@@ -1480,9 +1506,16 @@ def run():
 
         enriched_trends.append(trend)
 
+        # TEMP DIAGNOSTIC — remove after tracing ranking
+        ws = weighted_score(trend)
         print(
-            f"✅ Enriched: {trend['title']} "
-            f"(Final Score: {trend['final_rank_score']})"
+            f"✅ Enriched: {trend['title'][:60]} "
+            f"(Final: {trend['final_rank_score']:.2f} | "
+            f"base: {ws:.2f} | "
+            f"sig: {signal_bonus:.2f} | "
+            f"ev: {evidence_bonus:.2f} | "
+            f"ip: {-ip_penalty} | "
+            f"risk: {-risk_penalty})"
         )
 
     if not enriched_trends:
