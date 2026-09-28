@@ -925,6 +925,10 @@ def build_log_email(log, runtime):
         <li>Google: {log.get('google_count', 0)}
             {'❌ FAILED' if log.get('google_failed') else '✅'}
         </li>
+
+        <li>Pinterest: {log.get('pinterest_count', 0)}
+            {'❌ FAILED' if log.get('pinterest_failed') else '✅'}
+        </li>
     </ul>
 
     <h3>Pipeline Funnel</h3>
@@ -978,6 +982,9 @@ def run():
 
         "google_count": 0,
         "google_failed": False,
+
+        "pinterest_count": 0,
+        "pinterest_failed": False,
 
         # ---------- PIPELINE COUNTS ----------
         "total_raw": 0,
