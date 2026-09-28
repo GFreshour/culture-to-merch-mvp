@@ -1320,6 +1320,7 @@ def run():
         raw_conf = (
             trend.get("confidence_level")
             or sniff.get("confidence_level")
+            or sniff.get("confidence")
             or 0
         )
 
@@ -1369,6 +1370,14 @@ def run():
     # 6 Rank by commercial strength (weighted)
     # ----------------------------
     def weighted_score(t):
+        """
+        Base score from the sniff. This is now a CONTRIBUTING factor,
+        not the dominant one — evidence_bonus carries the ranking.
+
+        The sniff is title-only and cannot see engagement, so its
+        judgments are noisier than the evidence. We weight it lower
+        accordingly.
+        """
         sniff = t.get("tier2_sniff") or {}
 
         commercial = t.get("commercial_score", 0)
@@ -1385,10 +1394,13 @@ def run():
 
         generic_penalty = generic_phrase_penalty(headline)
 
+        # Reduced weights across the board so the base score doesn't
+        # dominate the total. Combined with the bumped evidence_bonus,
+        # this makes real engagement the primary ranking signal.
         final_score = (
-            commercial * 0.6 +
-            confidence * 0.3 +
-            audience * 0.1
+            commercial * 0.3 +
+            confidence * 0.15 +
+            audience * 0.05
         )
 
         final_score -= generic_penalty
@@ -1430,16 +1442,31 @@ def run():
 
         signals = enrichment.get("trend_signals", {}) or {}
 
-        signal_map = {
-            "high": 15,
-            "medium": 7,
-            "low": 0
-        }
+        def _signal_to_bonus(value, weight=1.0):
+            """
+            Convert a signal value into a bonus (0-15 scale before weight).
+            Handles numeric (0-100) and string (High/Medium/Low) formats.
+            """
+            if value is None or value == "":
+                return 0.0
+            if isinstance(value, (int, float)):
+                return (float(value) / 100.0) * 15.0 * weight
+            v = str(value).lower()
+            if "high" in v or "strong" in v:
+                return 15.0 * weight
+            if "medium" in v or "moderate" in v:
+                return 7.0 * weight
+            if "low" in v or "weak" in v:
+                return 0.0
+            try:
+                return (float(v) / 100.0) * 15.0 * weight
+            except ValueError:
+                return 0.0
 
         signal_bonus = (
-            signal_map.get(str(signals.get("merch_potential", "")).lower(), 0) +
-            signal_map.get(str(signals.get("cross_platform_spread", "")).lower(), 0) +
-            signal_map.get(str(signals.get("memetic_variations", "")).lower(), 0)
+            _signal_to_bonus(signals.get("merch_potential"), weight=1.0) +
+            _signal_to_bonus(signals.get("memetic_variations"), weight=0.8) +
+            _signal_to_bonus(signals.get("cross_platform_spread"), weight=0.5)
         )
 
         risk = str(enrichment.get("risk_level", "")).lower()
@@ -1482,18 +1509,17 @@ def run():
         if evidence_class == "synthetic":
             evidence_bonus = -25
         else:
-            # Crowd evidence carries the most weight because it directly
-            # proves people are reacting. Editorial and search carry less.
             class_weight = {
                 "crowd": 1.0,
-                "velocity": 0.8,
-                "editorial": 0.6,
-                "search": 0.5,
+                "velocity": 0.9,
+                "editorial": 0.8,
+                "search": 0.7,
                 "unknown": 0.0,
             }.get(evidence_class, 0.0)
 
-            # Map strength (0-100) to a bounded bonus (0 to +15)
-            evidence_bonus = (evidence_strength / 100) * 15 * class_weight
+            # Evidence strength is the reality anchor. It gets more
+            # weight than the sniff's title-only judgment.
+            evidence_bonus = (evidence_strength / 100) * 40 * class_weight
 
         trend["final_rank_score"] = (
             weighted_score(trend)
