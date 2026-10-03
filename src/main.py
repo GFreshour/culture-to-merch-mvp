@@ -1378,22 +1378,14 @@ def run():
     # ----------------------------
     def weighted_score(t):
         """
-        Base score from the sniff. This is now a CONTRIBUTING factor,
-        not the dominant one — evidence_bonus carries the ranking.
+        Base score. The sniff has been removed — it's title-only and
+        cannot see engagement, so its judgments are systematically
+        wrong about trend strength. It stays in the pipeline for
+        FILTERING (commercial_score >= 40 threshold) but not ranking.
 
-        The sniff is title-only and cannot see engagement, so its
-        judgments are noisier than the evidence. We weight it lower
-        accordingly.
+        The ranking is now driven by evidence_strength (in
+        final_rank_score) and the enrichment signal_bonus.
         """
-        sniff = t.get("tier2_sniff") or {}
-
-        commercial = t.get("commercial_score", 0)
-
-        confidence = t.get("confidence_level", 0)
-
-        audience_map = {"high": 100, "medium": 60, "low": 30}
-        audience = audience_map.get(sniff.get("audience_size"), 60)
-
         headline = (
             t.get("ai_enrichment", {})
             .get("merch_headline", "")
@@ -1401,18 +1393,9 @@ def run():
 
         generic_penalty = generic_phrase_penalty(headline)
 
-        # Reduced weights across the board so the base score doesn't
-        # dominate the total. Combined with the bumped evidence_bonus,
-        # this makes real engagement the primary ranking signal.
-        final_score = (
-            commercial * 0.3 +
-            confidence * 0.15 +
-            audience * 0.05
-        )
-
-        final_score -= generic_penalty
-
-        return final_score
+        # Minimal base. Everything meaningful comes from evidence_bonus
+        # and signal_bonus in final_rank_score.
+        return -generic_penalty
 
     trends.sort(key=weighted_score, reverse=True)
 
@@ -1471,8 +1454,8 @@ def run():
                 return 0.0
 
         signal_bonus = (
-            _signal_to_bonus(signals.get("merch_potential"), weight=1.0) +
-            _signal_to_bonus(signals.get("memetic_variations"), weight=0.8) +
+            _signal_to_bonus(signals.get("merch_potential"), weight=1.2) +
+            _signal_to_bonus(signals.get("memetic_variations"), weight=0.9) +
             _signal_to_bonus(signals.get("cross_platform_spread"), weight=0.5)
         )
 
@@ -1524,9 +1507,10 @@ def run():
                 "unknown": 0.0,
             }.get(evidence_class, 0.0)
 
-            # Evidence strength is the reality anchor. It gets more
-            # weight than the sniff's title-only judgment.
-            evidence_bonus = (evidence_strength / 100) * 40 * class_weight
+            # Evidence strength is now the primary ranking signal.
+            # Range 0-60 gives meaningful separation between a
+            # 500-upvote post and a 25,000-upvote post.
+            evidence_bonus = (evidence_strength / 100) * 60 * class_weight
 
         trend["final_rank_score"] = (
             weighted_score(trend)
