@@ -640,25 +640,58 @@ AI ARTWORK PROMPT
 ═══════════════════════════════════════════════════════════════════
 
 - Platform-agnostic prompt for POD artwork generation.
-- Describe ONLY the printable graphic, not products, mockups, or scenes.
-- Must work on transparent, white, dark, and light backgrounds.
-- Include: artistic style, composition, typography style, line weight,
-  textures, color palette, mood, visual hierarchy, print aesthetic.
-- Optimize for screen print aesthetics, POD friendliness, thumbnail
-  visibility, simplified silhouettes, clean edges, high contrast.
-- Prefer isolated subjects, centered compositions, vector-friendly
-  styling, limited palettes.
-- Avoid cluttered scenes, detailed realism, busy backgrounds, tiny
-  illegible typography.
+- Must work on Gemini, ChatGPT/DALL-E, Midjourney, Ideogram, and Canva
+  AI without modification. Plain English only. No model-specific syntax
+  (no --ar, no --no, no weights, no brackets).
+- Describe ONLY the printable graphic. Never describe scenes, mockups,
+  product photography, or environments.
 - Keep under 120 words.
 
-Example quality:
-"Distressed retro illustration of an exhausted raccoon drinking gas
-station coffee, muted olive and cream palette, vintage halftone
-texture, centered composition, thick collegiate typography, simplified
-vector shapes, isolated artwork with transparent background
-compatibility, worn screen print aesthetic, ironic sleep-deprived mood,
-high contrast"
+THE PROMPT MUST ALWAYS INCLUDE ALL OF THESE EXACT PHRASES:
+  - "Isolated graphic on transparent background."
+  - "No scene, no landscape, no background, no room, no sky, no sun,
+    no clouds, no house, no garden."
+  - "No mockup, no product photography, no t-shirt visible, no model."
+  - "No frame, no border, no decorative edges."
+  - "No texture, no paper grain, no gradient background."
+  - "Designed to print as a centered chest graphic on a t-shirt."
+  - "Readable at 2-inch thumbnail size."
+
+THE PROMPT MUST DESCRIBE:
+  - Primary typography (style, weight, effect) and the exact phrase
+  - Any secondary text or subtext
+  - Any icon or illustration (1–3 simplified elements maximum)
+  - Color palette (2–3 colors max, flat)
+  - Composition (centered, stacked, arched, etc.)
+  - Visual style: flat vector, single-weight lines, screen-print
+    aesthetic, high contrast
+
+THE PROMPT MUST AVOID:
+  - Scenes, landscapes, rooms, environments
+  - Realism, 3D rendering, photorealism
+  - Gradients, drop shadows, glows
+  - Multiple illustration elements crowded together
+  - Decorative borders or frames
+  - Product mockups or clothing
+  - Model names or aspect ratio syntax
+
+BAD EXAMPLE (produces a scene, not a merch graphic):
+"A playful scene of a cozy kitchen with a spilled coffee cup, soft
+morning light, and whimsical illustrated papers scattered around,
+warm and inviting mood, gentle textures."
+
+GOOD EXAMPLE (produces a merch graphic):
+"Isolated graphic of the text 'OOPS, THEY MISSED THE MARK' in bold
+distressed sans-serif, centered. Below the text, three simple
+line-art icons in a tight row: a tipped coffee cup, a crumpled
+paper, a dart missing a target. Two-color palette: red and navy.
+Flat vector, screen print aesthetic, thick single-weight lines.
+Transparent background. No scene, no landscape, no background, no
+room, no sky, no clouds, no house, no garden. No mockup, no product
+photography, no t-shirt visible, no model. No frame, no border, no
+decorative edges. No texture, no paper grain, no gradient
+background. Designed to print as a centered chest graphic on a
+t-shirt. Readable at 2-inch thumbnail size. High contrast."
 
 ═══════════════════════════════════════════════════════════════════
 AVOID
@@ -1422,6 +1455,47 @@ def run():
         if trend.get("synthetic", False):
             enrichment["source_context"] = (
                 "Speculative angle. No direct source signal."
+            )
+
+        # ---- ARTWORK PROMPT RED-FLAG CHECK ----
+        # Scan for words that indicate the model produced a scene or
+        # mockup instead of an isolated merch graphic. If found, append
+        # a corrective suffix rather than rejecting the whole enrichment.
+        RED_FLAG_TERMS = [
+            "scene",
+            "landscape",
+            "photograph",
+            "mockup",
+            "product shot",
+            "realistic",
+        ]
+        artwork_prompt = (enrichment.get("ai_artwork_prompt") or "").lower()
+
+        flagged = []
+        for term in RED_FLAG_TERMS:
+            if term in artwork_prompt:
+                idx = artwork_prompt.find(term)
+                before = artwork_prompt[max(0, idx - 15):idx]
+                if (
+                    "no " not in before
+                    and "without " not in before
+                    and "not " not in before
+                ):
+                    flagged.append(term)
+
+        if flagged:
+            print(
+                f"⚠️ Artwork prompt for '{trend.get('title', '')[:40]}' "
+                f"contains scene-like terms: {flagged}. "
+                f"Appending corrective suffix."
+            )
+            enrichment["ai_artwork_prompt"] = (
+                (enrichment.get("ai_artwork_prompt") or "").rstrip(".") +
+                ". Isolated graphic on transparent background. "
+                "No scene, no landscape, no background, no room. "
+                "No mockup, no product photography, no model. "
+                "No frame, no border. Designed as a centered chest "
+                "graphic for a t-shirt."
             )
 
         trend["ai_enrichment"] = enrichment
