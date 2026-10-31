@@ -195,9 +195,9 @@ def is_thin_title(title: str):
     if len(words) < MIN_THIN_WORDS:
         return False, f"only {len(words)} word(s)"
 
-    # Bare proper noun: 2-3 words, all capitalized, no lowercase connectors
-    # e.g. "philadelphia 76ers", "atlético tucumán", "billie jean king"
-    if len(words) <= 3:
+    # Bare proper noun: exactly 2 words, all capitalized, no lowercase connectors
+    # Relaxed from 3 to 2 so we don't kill real phrases like "Ram Regrets Fight"
+    if len(words) == 2:
         all_cap = all(w[0].isupper() for w in words if w and w[0].isalpha())
         if all_cap:
             return False, "bare proper noun"

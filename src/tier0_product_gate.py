@@ -17,6 +17,18 @@ def run_productability_gate(trend, client):
     title = (trend.get("title") or "").strip()
     source = (trend.get("source") or "unknown").lower()
 
+    # HARD OVERRIDE: High-engagement Reddit posts are verified cultural moments.
+    # The AI title-judgment should not be allowed to kill a 20k+ upvote post.
+    score = trend.get("score") or 0
+    if source == "reddit" and score >= 20000:
+        trend["productability"] = {
+            "keep": True,
+            "productability_score": 85,
+            "reason": "High-engagement cultural moment (score override).",
+            "category": "Meme | Identity"
+        }
+        return trend
+
     # ---- Build an evidence summary for context ----
     evidence = trend.get("source_evidence") or {}
     evidence_class = evidence.get("class", "unknown")

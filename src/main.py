@@ -1627,8 +1627,11 @@ def run():
     # FINAL STRATIFICATION
     # ----------------------------
 
-    TEST_TOP5_LIMIT = 1 if TEST_MODE else 5
-    TEST_WATCHLIST_LIMIT = 1 if TEST_MODE else 15
+    # If we don't have enough real trends to fill Top 5, drop the limit.
+    # Don't force a Top 5 if only 2 things passed enrichment.
+    real_top5_limit = min(TEST_TOP5_LIMIT, len(real_trends))
+    TEST_TOP5_LIMIT = real_top5_limit if not TEST_MODE else 1
+    TEST_WATCHLIST_LIMIT = 15
 
     # Split by evidence class first.
     # Synthetic trends are only allowed into Watchlist.
@@ -1645,9 +1648,9 @@ def run():
 
     # Watchlist: prefer real trends first, pad with synthetics only if needed
     # Real trends fill Watchlist first, up to the limit
+    # If Top 5 shrunk, we want Watchlist to start right after it.
     watchlist_real = real_trends[
         TEST_TOP5_LIMIT:
-        TEST_TOP5_LIMIT + TEST_WATCHLIST_LIMIT
     ]
 
     # Pad with synthetics ONLY if real trends are extremely thin.
