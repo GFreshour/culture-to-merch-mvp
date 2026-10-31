@@ -1448,6 +1448,7 @@ def run():
 
         if not enrichment:
             print(f"⚠️ Skipping failed enrichment: {trend['title']}")
+            print(f"   Reason: empty response or JSON parse error. (Check raw API logs)")
             continue
 
         # For synthetic trends, override source_context with a fixed string.
@@ -1649,15 +1650,17 @@ def run():
         TEST_TOP5_LIMIT + TEST_WATCHLIST_LIMIT
     ]
 
-    # Only pad with synthetics if real trends are thin (< 5 items).
-    # On a healthy day, Watchlist should be all real.
-    MIN_REAL_FOR_NO_PADDING = 5
-    if len(watchlist_real) < MIN_REAL_FOR_NO_PADDING:
-        padding_target = MIN_REAL_FOR_NO_PADDING
-        remaining_slots = max(0, padding_target - len(watchlist_real))
-        watchlist_synthetic = synthetic_trends[:remaining_slots]
-    else:
-        watchlist_synthetic = []
+    # Pad with synthetics ONLY if real trends are extremely thin.
+    # On a healthy day, Watchlist should be 100% real trends.
+    # We only pad to 5 items total. If we have 3 real trends, we add 2
+    # synthetics. If we have 10 real trends, we add 0 synthetics.
+    MIN_ITEMS_IN_WATCHLIST = 5
+    remaining_slots = max(0, MIN_ITEMS_IN_WATCHLIST - len(watchlist_real))
+    
+    # Only take synthetics that actually scored above negative (optional, 
+    # but good to avoid completely broken ones)
+    valid_synthetics = [t for t in synthetic_trends if t.get("final_rank_score", 0) > -20]
+    watchlist_synthetic = valid_synthetics[:remaining_slots]
 
     watchlist = watchlist_real + watchlist_synthetic
 

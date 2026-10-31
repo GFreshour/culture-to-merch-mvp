@@ -1,29 +1,53 @@
+import re
+
+def clean_pdf_text(text: str) -> str:
+    """
+    Removes characters that break wkhtmltopdf, like invisible formatting
+    marks, non-Latin CJK characters, or stray control codes.
+    """
+    if not isinstance(text, str):
+        return text
+
+    # 1. Remove zero-width spaces, directional marks, and BOMs
+    text = re.sub(r'[\u200B-\u200D\u202A-\u202E\uFEFF]', '', text)
+    
+    # 2. Remove CJK (Chinese/Japanese/Korean) characters that sneak in
+    # from hallucinations or bad encoding. Allow standard Latin-1, emojis,
+    # and common punctuation.
+    text = re.sub(r'[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uffef\u4e00-\u9faf\u3400-\u4dbf]', '', text)
+    
+    return text.strip()
+
 def normalize_for_pdf(trend: dict) -> dict:
     ai = trend.get("ai_enrichment", {}) or {}
 
+    # Clean the text fields that get rendered in the PDF
+    headline = clean_pdf_text(ai.get("merch_headline", ""))
+    source_context = clean_pdf_text(ai.get("source_context", ""))
+
     return {
-        "title": trend.get("title", ""),
+        "title": clean_pdf_text(trend.get("title", "")),
 
         # NEW PRIMARY FIELD
-        "merch_headline": ai.get("merch_headline", ""),
-        "source_context": ai.get("source_context", ""),
+        "merch_headline": headline,
+        "source_context": source_context,
 
         # Strategic Fields
-        "core_insight": ai.get("core_insight", ""),
-        "buyer_psychology": ai.get("buyer_psychology", ""),
-        "target_audience": ai.get("target_audience", ""),
-        "primary_product": ai.get("primary_product", ""),
-        "secondary_products": ai.get("secondary_products", []),
-        "avoid_products": ai.get("avoid_products", []),
-        "design_direction": ai.get("design_direction", ""),
+        "core_insight": clean_pdf_text(ai.get("core_insight", "")),
+        "buyer_psychology": clean_pdf_text(ai.get("buyer_psychology", "")),
+        "target_audience": clean_pdf_text(ai.get("target_audience", "")),
+        "primary_product": clean_pdf_text(ai.get("primary_product", "")),
+        "secondary_products": [clean_pdf_text(p) for p in ai.get("secondary_products", [])],
+        "avoid_products": [clean_pdf_text(p) for p in ai.get("avoid_products", [])],
+        "design_direction": clean_pdf_text(ai.get("design_direction", "")),
 
         # REPLACED FIELD
         "niche_variations": ai.get("niche_variations", []),
 
-        "differentiation_strategy": ai.get("differentiation_strategy", ""),
-        "risk_level": ai.get("risk_level", ""),
-        "execution_priority": ai.get("execution_priority", ""),
-        "ai_artwork_prompt": ai.get("ai_artwork_prompt", ""),
+        "differentiation_strategy": clean_pdf_text(ai.get("differentiation_strategy", "")),
+        "risk_level": clean_pdf_text(ai.get("risk_level", "")),
+        "execution_priority": clean_pdf_text(ai.get("execution_priority", "")),
+        "ai_artwork_prompt": clean_pdf_text(ai.get("ai_artwork_prompt", "")),
         "trend_signals": ai.get("trend_signals", {}),
 
         # Scoring Layer
