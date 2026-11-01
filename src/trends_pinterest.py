@@ -4,22 +4,18 @@ import math
 from typing import List, Dict, Any
 from apify_client import ApifyClient
 
-# Actor 1: Your existing trending keyword discoverer
+# Actor 1: Trending keyword discoverer
 TRENDS_ACTOR = "automation-lab/pinterest-trends-scraper"
-# Actor 2: The new engagement (exact save count) scraper
-SAVES_ACTOR = "thequietstack/pinterest-scraper"
-
+# Actor 2: Engagement (rollup) scraper
+ENGAGEMENT_ACTOR = "seibs.co/pinterest-trends-intel"
 
 def _calculate_pinterest_strength(avg_saves: float) -> int:
-    """
-    Maps Pinterest save counts to a 0-100 strength score.
-    """
+    """Maps average Pinterest saves to a 0-100 strength score."""
     if avg_saves <= 0:
         return 0
-    # Log scale: 0 saves -> 0, ~10k saves -> ~100.
+    # Log scale: 0 saves -> 0, ~10k saves -> ~100
     score = min(100, (math.log1p(avg_saves) / 10.8) * 100)
     return int(round(score))
-
 
 def get_pinterest_trends() -> List[Dict[str, Any]]:
     token = os.getenv("APIFY_TOKEN")
@@ -36,7 +32,7 @@ def get_pinterest_trends() -> List[Dict[str, Any]]:
         run = client.actor(TRENDS_ACTOR).call(run_input={
             "countries": ["US"],
             "trendTypes": ["growing"],
-            "maxResultsPerCountry": 10  # Keep this small to control cost
+            "maxResultsPerCountry": 10  # Keep small to control cost
         })
         dataset = client.dataset(run["defaultDatasetId"])
         for item in dataset.iterate_items():
@@ -51,26 +47,25 @@ def get_pinterest_trends() -> List[Dict[str, Any]]:
         print("⚠️ No trending keywords found on Pinterest.")
         return []
 
-    print(f"📊 Found {len(trending_keywords)} trending keywords. Fetching exact saves...")
+    print(f"📊 Found {len(trending_keywords)} trending keywords. Fetching engagement rollups...")
 
-    # --- STEP 2: Get exact save counts for each keyword ---
+    # --- STEP 2: Get engagement rollups for each keyword ---
     trends = []
     for term in trending_keywords:
         try:
-            run = client.actor(SAVES_ACTOR).call(run_input={
-                "searchTerms": [term],
-                "maxItemsPerInput": 5,  # Top 5 pins is enough to gauge strength
-                "exactSaves": True,     # Ensure we get the real number
+            run = client.actor(ENGAGEMENT_ACTOR).call(run_input={
+                "mode": "topic_content",
+                "keywords": [term],
+                "region": "US"
             })
             dataset = client.dataset(run["defaultDatasetId"])
             
-            saves_list = []
-            for pin in dataset.iterate_items():
-                if pin.get("saves") is not None:
-                    saves_list.append(int(pin["saves"]))
+            avg_saves = 0.0
+            for item in dataset.iterate_items():
+                if item.get("rowType") == "topic_rollup":
+                    avg_saves = float(item.get("avg_saves", 0))
+                    break
             
-            # Calculate average saves from the top pins found
-            avg_saves = sum(saves_list) / len(saves_list) if saves_list else 0
             strength = _calculate_pinterest_strength(avg_saves)
 
             trends.append({
@@ -83,12 +78,11 @@ def get_pinterest_trends() -> List[Dict[str, Any]]:
             print(f"   📌 {term}: avg saves {int(avg_saves)} -> strength {strength}")
             
         except Exception as e:
-            print(f"   ⚠️ Failed to get saves for '{term}': {e}")
+            print(f"   ⚠️ Failed to get engagement for '{term}': {e}")
             continue
 
     print(f"📊 Pinterest trends fetched: {len(trends)}")
     return trends
-
 
 if __name__ == "__main__":
     results = get_pinterest_trends()
