@@ -30,7 +30,7 @@ from trends_x import get_x_trends
 #from trends_substack import get_substack_trends
 from trends_google import get_daily_trends
 from ai_trend_expander import expand_trends_with_ai
-from trends_pinterest import get_pinterest_trends
+# from trends_pinterest import get_pinterest_trends  # disabled — Apify actors fail to return save data
 from source_filters import is_thin_title
 from trends_reddit_apify import get_reddit_trends_apify
 
@@ -1133,14 +1133,17 @@ def run():
         log["google_failed"] = True
         google_trends = []
 
-    # --- PINTEREST ---
-    try:
-        pinterest_trends = get_pinterest_trends()
-        log["pinterest_count"] = len(pinterest_trends)
-    except Exception as e:
-        print(f"⚠️ Pinterest scraper failed: {e}")
-        log["pinterest_failed"] = True
-        pinterest_trends = []
+    # --- PINTEREST DISABLED ---
+    # Actors are failing to return save counts. Relying on Reddit for now.
+    # try:
+    #     pinterest_trends = get_pinterest_trends()
+    #     log["pinterest_count"] = len(pinterest_trends)
+    # except Exception as e:
+    #     print(f"⚠️ Pinterest scraper failed: {e}")
+    #     log["pinterest_failed"] = True
+    #     pinterest_trends = []
+
+    pinterest_trends = []
     
 
     all_raw_trends = (
