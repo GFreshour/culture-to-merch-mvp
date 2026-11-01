@@ -1627,13 +1627,7 @@ def run():
     # FINAL STRATIFICATION
     # ----------------------------
 
-    # If we don't have enough real trends to fill Top 5, drop the limit.
-    # Don't force a Top 5 if only 2 things passed enrichment.
-    real_top5_limit = min(TEST_TOP5_LIMIT, len(real_trends))
-    TEST_TOP5_LIMIT = real_top5_limit if not TEST_MODE else 1
-    TEST_WATCHLIST_LIMIT = 15
-
-    # Split by evidence class first.
+    # 1. Split by evidence class first.
     # Synthetic trends are only allowed into Watchlist.
     real_trends = [
         t for t in enriched_trends
@@ -1644,15 +1638,21 @@ def run():
         if t.get("source_evidence", {}).get("class") == "synthetic"
     ]
 
-    top5 = real_trends[:TEST_TOP5_LIMIT]
+    # 2. Calculate limits.
+    base_top5_limit = 1 if TEST_MODE else 5
+    base_watchlist_limit = 1 if TEST_MODE else 15
+    
+    # If we don't have enough real trends to fill Top 5, drop the limit.
+    # Don't force a Top 5 if only 2 things passed enrichment.
+    actual_top5_limit = min(base_top5_limit, len(real_trends))
 
-    # Watchlist: prefer real trends first, pad with synthetics only if needed
-    # Real trends fill Watchlist first, up to the limit
+    # 3. Slice the lists.
+    top5 = real_trends[:actual_top5_limit]
+
+    # Watchlist: prefer real trends first, pad with synthetics only if needed.
     # If Top 5 shrunk, we want Watchlist to start right after it.
-    watchlist_real = real_trends[
-        TEST_TOP5_LIMIT:
-    ]
-
+    watchlist_real = real_trends[actual_top5_limit:]
+    
     # Pad with synthetics ONLY if real trends are extremely thin.
     # On a healthy day, Watchlist should be 100% real trends.
     # We only pad to 5 items total. If we have 3 real trends, we add 2
