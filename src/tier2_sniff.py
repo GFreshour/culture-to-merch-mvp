@@ -68,6 +68,8 @@ Return STRICT JSON only, like this example:
             except json.JSONDecodeError:
                 print(f"⚠️ Tier-2 JSON parse error (attempt {attempt}/{MAX_RETRIES})")
                 time.sleep(RETRY_DELAY)
+                continue  # <--- ADD THIS LINE: skip to the next retry loop
+                
                 
 
             # Ensure all required keys exist (safe defaults)

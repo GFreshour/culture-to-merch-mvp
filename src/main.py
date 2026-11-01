@@ -331,14 +331,13 @@ def build_source_evidence(trend):
         }
 
     if source == "pinterest":
-        # Pinterest trends are product-discovery signals. Same class as
-        # Google Trends (people searching), but arguably more POD-relevant
-        # because Pinterest *is* a product discovery engine.
+        # Use the actual strength calculated from save counts in trends_pinterest.py
+        calculated_strength = trend.get("score", 0)
         return {
             "class": "search",
-            "strength": 55,
-            "has_engagement": False,
-            "reason": "trending on Pinterest",
+            "strength": calculated_strength,
+            "has_engagement": trend.get("has_engagement", False),
+            "reason": f"Pinterest saves (avg {trend.get('pinterest_avg_saves', 0)})",
         }
 
     if source == "substack":
@@ -1759,7 +1758,8 @@ def run():
         ".trend h2 { margin-top: 0; margin-bottom: 10px; font-size: 22px; color: #111827; }",
 
         #/* Section Styling */
-        ".section { margin-top: 22px; padding-top: 12px; border-top: 1px solid #eef2f7; }",
+        ".section { margin-top: 22px; padding-top: 12px; border-top: 1px solid #eef2f7; page-break-inside: avoid; }",
+        ".niche-card { page-break-inside: avoid; }",
         ".section h3 { margin: 0 0 6px 0; font-size: 14px; letter-spacing: 0.5px; text-transform: uppercase; color: #4b5563; }",
         ".section p { margin: 0; font-size: 14px; line-height: 1.6; color: #374151; }",
 
