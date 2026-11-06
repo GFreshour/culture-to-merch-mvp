@@ -18,9 +18,9 @@ def run_productability_gate(trend, client):
     source = (trend.get("source") or "unknown").lower()
 
     # HARD OVERRIDE: High-engagement Reddit posts are verified cultural moments.
-    # The AI title-judgment should not be allowed to kill a 20k+ upvote post.
+    # Lowered to 10k to prevent the funnel from choking on good subculture posts.
     score = trend.get("score") or 0
-    if source == "reddit" and score >= 20000:
+    if source == "reddit" and score >= 10000:
         trend["productability"] = {
             "keep": True,
             "productability_score": 85,
