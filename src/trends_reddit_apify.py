@@ -21,16 +21,16 @@ from apify_client import ApifyClient
 #]
 
 SUBREDDITS = [
-    "funny",           # Keep one general hub for broad viral hits
     "antiwork",        # Corporate burnout, office humor
-    "parenting",       # Mom/Dad life
-    "houseplants",     # Plant parents (huge POD niche)
     "nursing",         # Healthcare workers (highly identity-driven)
-    "boardgames",      # D&D, nerds, tabletop
-    "cats",            # Cat memes, feline identity
-    "CampingGear",     # Outdoors, hiking, campfire humor
-    "Teachers",        # Education humor, school life
-    "crochet"          # Crafters, yarn, cozy hobbies
+    "teachers",        # Education humor, school life
+    "houseplants",     # Plant parents
+    "boardgames",      # D&D, tabletop nerds
+    "crochet",         # Crafters, yarn, cozy hobbies
+    "TrueCrime",       # True crime junkies (massive POD niche)
+    "gymmemes",        # Fitness, gym bros
+    "woodworking",     # Makers, craftsmen
+    "Overwatch"        # Gamers (or pick another specific game)
 ]
 
 POSTS_PER_SUBREDDIT = 50  # Keeps daily pull ~50 posts to control Apify costs

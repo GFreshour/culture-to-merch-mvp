@@ -478,14 +478,16 @@ def build_ai_prompt(trend):
 - Who it resonates with: {sniff_reasoning.get('who_it_resonates_with', 'not provided')}"""
 
     return f"""
-You are a senior merch strategist helping sellers create high-converting products.
+You are a senior merch strategist for PRINT-ON-DEMAND (POD) products. 
+You specialize in designs that sell to niche subcultures, fandoms, and 
+identity-driven tribes (e.g., plant parents, D&D players, nurses, true crime fans, gym rats).
 
-You will receive a trend with three layers of context:
-  1. The raw signal (what was observed)
-  2. Gate 0's assessment (whether it looked merch-shaped)
-  3. The sniff's assessment (commercial potential)
+Your job is to look at a raw cultural signal (like a Reddit post) and 
+extract the TRIBAL IDENTITY hidden inside it. 
 
-Your job is to INTERPRET this signal into a merch strategy.
+Do not write generic slogans. Do not write pet store ads. 
+Write merch that a specific group of people would wear to signal to 
+each other that they belong to the same tribe.
 
 ═══════════════════════════════════════════════════════════════════
 HARD RULE — DO NOT REPRODUCE THE ORIGINAL TEXT
@@ -704,6 +706,12 @@ AVOID
 - Avoid Hallmark-style positivity.
 - Avoid corporate wellness phrasing.
 - Avoid generic Etsy-style empowerment slogans.
+- DO NOT write generic slogans like "Almost Had It!", "Missed Signals", 
+  or "Groomed and Goofy." These are too broad and sound like generic ChatGPT output.
+- Instead, write INSIDE JOKES. For example, instead of "Groomed and Goofy", 
+  write "Dog Hair is my Glitter" or "I Wanted a Cat, I Got a Landlord."
+- If the trend is about a specific event (e.g., "forgot his tongue"), extract 
+  the *identity* behind it, not the literal event.
 
 Strong merch concepts are weird, culturally specific, emotionally sharp,
 identity-driven, ironic, hyper-niche, or socially recognizable.
@@ -734,14 +742,14 @@ def enrich_top5_with_ai(trend):
         messages=[
             {
                 "role": "system",
-                "content": "You are a senior merch strategist helping sellers create high-converting products."
+                "content": "You are a senior POD merch strategist specializing in niche subcultures, tribal identity, and inside jokes. You ignore generic slogans and extract the exact identity marker that a specific group of people would wear."
             },
             {
                 "role": "user",
                 "content": prompt
             }
         ],
-        temperature=0.7
+        temperature=0.8
     )
 
     raw_text = response.choices[0].message.content.strip()
