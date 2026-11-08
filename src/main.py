@@ -179,26 +179,11 @@ def score_trend(trend):
         return "Low"
 
     # -------------------------
-    # 📊 Source Weighting
+    # 📊 Base Score
     # -------------------------
-    if source == "substack":
-        source_weight = 1.25  # 🔥 higher quality signal
-    else:
-        source_weight = 1.0
-
-    # -------------------------
-    # 🧠 Subreddit Quality (Reddit only)
-    # -------------------------
-    good_subs = ["funny", "memes", "showerthoughts", "dadjokes"]
-
-    if source == "reddit":
-        if subreddit not in good_subs:
-            base_score = 0.5  # Medium baseline
-        else:
-            base_score = 1.0  # Strong baseline
-    else:
-        # Substack doesn't use subreddit logic
-        base_score = 1.0
+    # Since we are now intentionally targeting niche subcultures, we no longer
+    # penalize non-generic subreddits. Everyone starts with a strong baseline.
+    base_score = 1.0
 
     # -------------------------
     # ✍️ Title Quality Heuristic
@@ -206,18 +191,16 @@ def score_trend(trend):
     title_len = len(title)
 
     if title_len > 100:
-        base_score *= 0.6
+        base_score *= 0.6  # Too long, hard to fit on a shirt
     elif title_len < 60:
-        base_score *= 1.2
+        base_score *= 1.2  # Punchy and concise
 
     # -------------------------
     # 🧮 Final Score → Tier
     # -------------------------
-    final_score = base_score * source_weight
-
-    if final_score >= 1.2:
+    if base_score >= 1.0:
         return "High"
-    elif final_score >= 0.8:
+    elif base_score >= 0.7:
         return "Medium"
     else:
         return "Low"
