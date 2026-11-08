@@ -954,21 +954,13 @@ def build_log_email(log, runtime):
             {'❌ FAILED' if log.get('reddit_rss_failed') else ''}
         </li>
 
-        <li>TikTok: {log.get('tiktok_count', 0)}
-            {'❌ FAILED' if log.get('tiktok_failed') else '✅'}
-        </li>
-
-        <li>Substack: {log.get('substack_count', 0)}
-            {'❌ FAILED' if log.get('substack_failed') else '✅'}
-        </li>
-
         <li>Google: {log.get('google_count', 0)}
             {'❌ FAILED' if log.get('google_failed') else '✅'}
         </li>
-
-        <li>Pinterest: {log.get('pinterest_count', 0)}
-            {'❌ FAILED' if log.get('pinterest_failed') else '✅'}
-        </li>
+        
+        <li>TikTok: {log.get('tiktok_count', 0)} (disabled)</li>
+        <li>Substack: {log.get('substack_count', 0)} (disabled)</li>
+        <li>Pinterest: {log.get('pinterest_count', 0)} (disabled)</li>
     </ul>
 
     <h3>Pipeline Funnel</h3>
@@ -979,6 +971,8 @@ def build_log_email(log, runtime):
 
         <li>Gate 0 Passed: {log.get('gate0_passed')}</li>
         <li>Gate 0 Removed: {log.get('gate0_removed')}</li>
+
+        <li>Thin-Title Removed: {log.get('thin_removed', 0)}</li>
 
         <li>Viability Removed: {log.get('viability_removed')}</li>
 
@@ -993,7 +987,8 @@ def build_log_email(log, runtime):
     <h3>AI Expansion</h3>
     <ul>
         <li>Triggered: {log.get('ai_triggered')}</li>
-        <li>After AI Expansion: {log.get('after_ai')}</li>
+        <li>After AI Expansion: {log.get('after_ai', 0)}</li>
+        <li>Synthetic Filler Added: {log.get('synthetic_count', 0)}</li>
     </ul>
 
     <h3>Runtime</h3>
