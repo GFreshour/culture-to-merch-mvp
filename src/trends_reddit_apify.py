@@ -163,6 +163,11 @@ def get_reddit_trends_apify() -> List[Dict[str, Any]]:
             })
 
         print(f"📊 Apify Reddit trends fetched: {len(trends)}")
+        
+        # Warn if the pull was suspiciously low
+        if len(trends) < 30:
+            print("⚠️ WARNING: Apify returned fewer than 30 posts. Reddit may be rate-limiting, or the actor failed on some subreddits.")
+            
         return trends
 
     except Exception as e:
