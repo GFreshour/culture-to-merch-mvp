@@ -33,7 +33,7 @@ SUBREDDITS = [
     "Overwatch"        # Gamers (or pick another specific game)
 ]
 
-POSTS_PER_SUBREDDIT = 50  # Keeps daily pull ~50 posts to control Apify costs
+POSTS_PER_SUBREDDIT = 15  # Lowered to force diversity and prevent one sub from dominating
 
 
 # -----------------------------------
