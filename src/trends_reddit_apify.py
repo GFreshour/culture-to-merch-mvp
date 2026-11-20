@@ -4,6 +4,7 @@
 
 import os
 import re
+import time
 from typing import List, Dict, Any
 from apify_client import ApifyClient
 
@@ -101,78 +102,104 @@ def get_reddit_trends_apify() -> List[Dict[str, Any]]:
 
     client = ApifyClient(token)
 
-    run_input = {
-        "mode": "subreddit",
-        "subreddits": SUBREDDITS,
-        "sortBy": "hot",
-        "maxPosts": POSTS_PER_SUBREDDIT,
-        "includeComments": False
-    }
+    print(
+        f"🚀 Pulling Reddit trends via themineworks/reddit-scraper "
+        f"for {len(SUBREDDITS)} subreddits (one call each)..."
+    )
 
-    print(f"🚀 Pulling Reddit trends via themineworks/reddit-scraper for {len(SUBREDDITS)} subreddits...")
+    trends = []
+    failed_subs = []
+    empty_subs = []
 
-    try:
-        run = client.actor("themineworks/reddit-scraper").call(run_input=run_input)
-        dataset = client.dataset(run["defaultDatasetId"])
+    for idx, sub in enumerate(SUBREDDITS, 1):
+        print(f"   [{idx}/{len(SUBREDDITS)}] r/{sub} ...")
 
-        trends = []
+        sub_input = {
+            "mode": "subreddit",
+            "subreddits": [sub],   # single subreddit per call
+            "sortBy": "hot",
+            "maxPosts": POSTS_PER_SUBREDDIT,
+            "includeComments": False
+        }
 
-        for item in dataset.iterate_items():
-            # Skip non-post summary/info objects returned by actor
-            if item.get("_type") in ["summary", "info"]:
-                continue
+        try:
+            run = client.actor("themineworks/reddit-scraper").call(run_input=sub_input)
+            dataset = client.dataset(run["defaultDatasetId"])
 
-            # Skip stickied/pinned moderator posts
-            if item.get("is_pinned", False):
-                continue
+            sub_items = [
+                it for it in dataset.iterate_items()
+                if it.get("_type") not in ("summary", "info")
+            ]
 
-            title = (item.get("title") or "").strip()
+            print(f"   [r/{sub}] returned {len(sub_items)} items")
 
-            if not title:
-                continue
+            if not sub_items:
+                empty_subs.append(sub)
 
-            if not is_valid_trend(title):
-                continue
+            for item in sub_items:
+                # Skip stickied/pinned moderator posts
+                if item.get("is_pinned", False):
+                    continue
 
-            subreddit = item.get("subreddit") or ""
-            score = item.get("score") or 0
-            upvote_ratio = item.get("upvote_ratio") or 0.0
-            comment_count = item.get("num_comments") or 0
-            post_body = (item.get("selftext") or "").strip()
-            url = item.get("permalink") or item.get("url") or ""
+                title = (item.get("title") or "").strip()
 
-            # Debug printout so you can verify live evidence in logs
-            print("\n========== REDDIT EVIDENCE ==========")
-            print("TITLE:", title)
-            print("SUBREDDIT:", subreddit)
-            print("SCORE:", score)
-            print("UPVOTE RATIO:", upvote_ratio)
-            print("COMMENTS:", comment_count)
-            print("BODY:", repr(post_body[:200]))
-            print("=====================================\n")
+                if not title:
+                    continue
 
-            trends.append({
-                "title": title,
-                "subreddit": subreddit,
-                "score": score,
-                "upvote_ratio": upvote_ratio,
-                "comment_count": comment_count,
-                "post_body": post_body,
-                "url": url,
-                "source": "reddit"
-            })
+                if not is_valid_trend(title):
+                    continue
 
-        print(f"📊 Apify Reddit trends fetched: {len(trends)}")
-        
-        # Warn if the pull was suspiciously low
-        if len(trends) < 30:
-            print("⚠️ WARNING: Apify returned fewer than 30 posts. Reddit may be rate-limiting, or the actor failed on some subreddits.")
-            
-        return trends
+                subreddit = item.get("subreddit") or sub
+                score = item.get("score") or 0
+                upvote_ratio = item.get("upvote_ratio") or 0.0
+                comment_count = item.get("num_comments") or 0
+                post_body = (item.get("selftext") or "").strip()
+                url = item.get("permalink") or item.get("url") or ""
 
-    except Exception as e:
-        print(f"⚠️ Apify Reddit failed: {e}")
-        return []
+                # Debug printout so you can verify live evidence in logs
+                print("\n========== REDDIT EVIDENCE ==========")
+                print("TITLE:", title)
+                print("SUBREDDIT:", subreddit)
+                print("SCORE:", score)
+                print("UPVOTE RATIO:", upvote_ratio)
+                print("COMMENTS:", comment_count)
+                print("BODY:", repr(post_body[:200]))
+                print("=====================================\n")
+
+                trends.append({
+                    "title": title,
+                    "subreddit": subreddit,
+                    "score": score,
+                    "upvote_ratio": upvote_ratio,
+                    "comment_count": comment_count,
+                    "post_body": post_body,
+                    "url": url,
+                    "source": "reddit"
+                })
+
+        except Exception as e:
+            print(f"   ⚠️ [r/{sub}] failed: {e}")
+            failed_subs.append(sub)
+
+        # Be polite between Apify calls — the actor rate-limits when hammered.
+        # Skip the sleep after the last sub.
+        if idx < len(SUBREDDITS):
+            time.sleep(2)
+
+    print(f"📊 Apify Reddit trends fetched: {len(trends)}")
+
+    if empty_subs:
+        print(f"⚠️ Subreddits that returned 0 items: {empty_subs}")
+    if failed_subs:
+        print(f"⚠️ Subreddits that errored out: {failed_subs}")
+
+    if len(trends) < 30:
+        print(
+            "⚠️ WARNING: Apify returned fewer than 30 posts total. "
+            "Some subreddits may be rate-limiting or the actor may be flaky."
+        )
+
+    return trends
 
 
 if __name__ == "__main__":
