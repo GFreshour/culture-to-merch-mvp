@@ -1634,12 +1634,62 @@ def run():
     # Don't force a Top 5 if only 2 things passed enrichment.
     actual_top5_limit = min(base_top5_limit, len(real_trends))
 
-    # 3. Slice the lists.
-    top5 = real_trends[:actual_top5_limit]
+    # 3. Quality-gated diverse Top 5 selection.
+    #
+    # Walk the score-sorted real_trends. Take the best item unconditionally,
+    # then for each remaining slot prefer the best item from an unrepresented
+    # subreddit — but only if it scores within DIVERSITY_BAND of the best
+    # remaining item overall. Otherwise fall back to the best remaining item.
+    #
+    # DIVERSITY_BAND = 0.85 means a new-sub candidate must score at least
+    # 85% of the best remaining candidate to earn the slot. Tighten toward
+    # 1.0 for stricter quality; loosen toward 0.7 for more diversity.
+    DIVERSITY_BAND = 0.85
+
+    def select_diverse_top5(pool, limit):
+        if limit <= 0:
+            return [], pool
+
+        selected = []
+        remaining = list(pool)  # already sorted by final_rank_score desc
+        seen_subs = set()
+
+        while remaining and len(selected) < limit:
+            best_overall = remaining[0]
+            best_overall_score = best_overall.get("final_rank_score", 0)
+
+            # On the first pick, or if the best overall is already a new sub,
+            # just take it.
+            best_sub = (best_overall.get("subreddit") or "").lower()
+            if not selected or (best_sub and best_sub not in seen_subs):
+                pick = best_overall
+            else:
+                # Find the best candidate from an unrepresented sub that
+                # clears the quality band.
+                threshold = best_overall_score * DIVERSITY_BAND
+                pick = None
+                for candidate in remaining[1:]:
+                    cand_sub = (candidate.get("subreddit") or "").lower()
+                    cand_score = candidate.get("final_rank_score", 0)
+                    if cand_sub and cand_sub not in seen_subs and cand_score >= threshold:
+                        pick = candidate
+                        break
+                if pick is None:
+                    # No new-sub candidate clears the band — take best overall.
+                    pick = best_overall
+
+            selected.append(pick)
+            remaining.remove(pick)
+            pick_sub = (pick.get("subreddit") or "").lower()
+            if pick_sub:
+                seen_subs.add(pick_sub)
+
+        return selected, remaining
+
+    top5, remaining_after_top5 = select_diverse_top5(real_trends, actual_top5_limit)
 
     # Watchlist: prefer real trends first, pad with synthetics only if needed.
-    # If Top 5 shrunk, we want Watchlist to start right after it.
-    watchlist_real = real_trends[actual_top5_limit:]
+    watchlist_real = remaining_after_top5
     
     # Pad with synthetics ONLY if real trends are extremely thin.
     # On a healthy day, Watchlist should be 100% real trends.
@@ -1667,6 +1717,8 @@ def run():
     print(f"📊 Top5 evidence: {[t.get('source_evidence', {}).get('class') for t in top5]}")
     print(f"📊 Watchlist evidence: {[t.get('source_evidence', {}).get('class') for t in watchlist]}")
     print(f"📊 Top5 strengths: {[t.get('source_evidence', {}).get('strength') for t in top5]}")
+    print(f"📊 Top5 subreddits: {[(t.get('subreddit') or '?') for t in top5]}")
+    print(f"📊 Top5 scores: {[round(t.get('final_rank_score', 0), 1) for t in top5]}")
 
     
     log["final_top5"] = len(top5)
