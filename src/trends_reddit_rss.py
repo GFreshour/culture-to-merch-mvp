@@ -5,16 +5,16 @@ import time
 import re
 
 SUBREDDITS = [
-    "funny",
-    "memes",
-    "showerthoughts",
-    "wholesomememes",
-    "AskReddit",
-    "facepalm",
-    "NotTheOnion",
     "antiwork",
-    "gaming",
-    "parenting"
+    "nursing",
+    "teachers",
+    "houseplants",
+    "boardgames",
+    "crochet",
+    "TrueCrime",
+    "gymmemes",
+    "woodworking",
+    "Overwatch"
 ]
 
 POST_LIMIT = 15

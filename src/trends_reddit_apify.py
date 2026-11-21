@@ -199,10 +199,14 @@ def get_reddit_trends_apify() -> List[Dict[str, Any]]:
             "Some subreddits may be rate-limiting or the actor may be flaky."
         )
 
-    return trends
+    return trends, {
+        "empty_subs": empty_subs,
+        "failed_subs": failed_subs,
+    }
 
 
 if __name__ == "__main__":
     # Test script directly
-    results = get_reddit_trends_apify()
+    results, health = get_reddit_trends_apify()
     print(f"\nCompleted standalone test: {len(results)} posts returned.")
+    print(f"Health: {health}")

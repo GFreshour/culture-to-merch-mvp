@@ -932,6 +932,9 @@ def build_log_email(log, runtime):
             {'❌ FAILED' if log.get('apify_failed') else '✅'}
         </li>
 
+        <li>Apify empty subs: {', '.join(log.get('apify_empty_subs', [])) or 'none'}</li>
+        <li>Apify failed subs: {', '.join(log.get('apify_failed_subs', [])) or 'none'}</li>
+
         <li>RSS Reddit: {log.get('reddit_rss_count', 0)}
             {'(used)' if log.get('reddit_rss_used') else ''}
             {'❌ FAILED' if log.get('reddit_rss_failed') else ''}
@@ -987,6 +990,8 @@ def run():
         # ---------- SOURCE HEALTH ----------
         "apify_count": 0,
         "apify_failed": False,
+        "apify_empty_subs": [],
+        "apify_failed_subs": [],
 
         "reddit_rss_count": 0,
         "reddit_rss_used": False,
@@ -1034,8 +1039,10 @@ def run():
     raw_reddit_trends = []
 
     try:
-        raw_reddit_trends = get_reddit_trends_apify()
+        raw_reddit_trends, apify_health = get_reddit_trends_apify()
         log["apify_count"] = len(raw_reddit_trends)
+        log["apify_empty_subs"] = apify_health.get("empty_subs", [])
+        log["apify_failed_subs"] = apify_health.get("failed_subs", [])
         print(f"📊 Apify returned: {len(raw_reddit_trends)}")
     except Exception as e:
         print(f"⚠️ Apify failed completely: {e}")
@@ -1263,6 +1270,35 @@ def run():
 
     if not trends:
         print("⚠️ No trends passed Tier 0. Exiting run.")
+
+        # Fire an alert ONLY when the sources themselves failed (we're blind),
+        # not when trends arrived but got filtered out (that's a quality
+        # outcome, and it's already visible in the run-summary email).
+        sources_dead = (
+            log.get("apify_count", 0) == 0
+            and log.get("reddit_rss_count", 0) == 0
+        )
+
+        if sources_dead:
+            try:
+                runtime = time.time() - start_time
+                log_email = build_log_email(log, runtime)
+                send_email_simple(
+                    subject="🚨 Merch Scout: ALL SOURCES FAILED (0 trends)",
+                    html_body=(
+                        "<p><strong>Every trend source returned zero results.</strong></p>"
+                        "<p>Likely causes: Apify billing/credit exhausted, "
+                        "Reddit blocking the RSS fallback, or a genuine "
+                        "outage. The pipeline is effectively blind.</p>"
+                        + log_email
+                    )
+                )
+            except Exception as alert_err:
+                print(f"⚠️ Could not send source-failure alert: {alert_err}")
+        else:
+            print("ℹ️ Sources returned data but nothing passed filters — "
+                  "no alert sent (see run summary).")
+
         return
 
     # ----------------------------
